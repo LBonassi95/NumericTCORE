@@ -19,7 +19,7 @@
             (planted f2)
         )
     )
-	; (:constraints (and
-	; 	(always (> (- (y-position a1) 5) 0))
-	; ))
+	(:constraints (and
+		(sometime (> (y-position a1) 5))
+	))
 )
