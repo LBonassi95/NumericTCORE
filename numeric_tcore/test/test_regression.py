@@ -70,5 +70,13 @@ def test_mixed_expressions():
     assert regression(FluentExp(gamma), action) == Or(LE(Minus(x, 15), 10), And(gamma, Not(Or(GT(Times(a, Plus(b, 10)), -4), Equals(x, 0)))))
 
 
+def test_increase_decrease_effects():
+    action = InstantaneousAction("action")
+
+    action.add_increase_effect(fluent=x, value=1)
+    action.add_decrease_effect(fluent=y, value=14)
+    assert regression(LT(x, 5), action) == LT(Plus(x, 1), 5)
+    assert regression(GE(y, 5), action) == GE(Minus(y, 14), 5)
+
 if __name__ == "__main__":
     pytest.main()

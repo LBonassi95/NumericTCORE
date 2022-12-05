@@ -33,7 +33,13 @@ def numeric_substitutuion(expression: FNode, action: InstantaneousAction):
     assert expression.is_fluent_exp()
     for eff in action.effects:
         if eff.fluent == expression:
-            return eff.value
+            if eff.kind == EffectKind.INCREASE:
+                return Plus(expression, eff.value)
+            elif eff.kind == EffectKind.DECREASE:
+                return Minus(expression, eff.value)
+            else:
+                assert eff.kind == EffectKind.ASSIGN
+                return eff.value
     return expression
 
 def regression(expression: FNode, action: InstantaneousAction) -> FNode:
