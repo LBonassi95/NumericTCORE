@@ -15,3 +15,22 @@ def test_compilation():
     compiler = NumericCompiler() 
     tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
     new_problem = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING).problem
+
+
+def test_compilation_sailing():
+    reader = PDDLReader()
+    domain_path = pkg_resources.resource_filename(__name__, 'pddl/sailing/domain.pddl')
+    problem_path = pkg_resources.resource_filename(__name__, 'pddl/sailing/instance_3_10_1229.pddl')
+    problem = reader.parse_problem(domain_path, problem_path)
+    compiler = NumericCompiler() 
+    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
+    new_problem = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING).problem
+
+def test_compilation_sailing_2():
+    reader = PDDLReader()
+    domain_path = pkg_resources.resource_filename(__name__, 'pddl/sailing/domain.pddl')
+    problem_path = pkg_resources.resource_filename(__name__, 'pddl/sailing/instance_3_8_1229.pddl')
+    problem = reader.parse_problem(domain_path, problem_path)
+    compiler = NumericCompiler() 
+    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
+    new_problem = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING).problem

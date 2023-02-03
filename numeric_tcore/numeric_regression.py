@@ -65,6 +65,14 @@ def regression(expression: FNode, action: InstantaneousAction) -> FNode:
         return LT(regression(expression.args[0], action), regression(expression.args[1], action))
     elif expression.is_le():
         return LE(regression(expression.args[0], action), regression(expression.args[1], action))
+    elif expression.is_plus():
+        return Plus(regression(expression.args[0], action), regression(expression.args[1], action))
+    elif expression.is_minus():
+        return Minus(regression(expression.args[0], action), regression(expression.args[1], action))
+    elif expression.is_times():
+        return Times(regression(expression.args[0], action), regression(expression.args[1], action))
+    elif expression.is_div():
+        return Div(regression(expression.args[0], action), regression(expression.args[1], action))
     elif expression.is_constant():
         return expression
     else:

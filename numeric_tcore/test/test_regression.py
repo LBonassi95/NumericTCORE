@@ -17,7 +17,11 @@ combinations = [([x, 0], [10, 0]),
                 ([y, 0], [20, 0]),
                 ([z, 5], [Plus(z, 30), 5]),
                 ([a, -4], [Minus(x, 15), -4]),
-                ([b, 0], [Times(a, Plus(b, 300)), 0])]
+                ([b, 0], [Times(a, Plus(b, 300)), 0]),
+                ([Plus(a, b), 0], [Plus(Minus(x, 15), Times(a, Plus(b, 300))), 0]),
+                ([Minus(a, b), 0], [Minus(Minus(x, 15), Times(a, Plus(b, 300))), 0]),
+                ([Times(a, b), 0], [Times(Minus(x, 15), Times(a, Plus(b, 300))), 0]),
+                ([Div(a, b), 0], [Div(Minus(x, 15), Times(a, Plus(b, 300))), 0])]
 
 @pytest.mark.parametrize('values, expected', combinations)
 @pytest.mark.parametrize("operator", [Equals, LT, LE, GT, GE])
@@ -31,8 +35,6 @@ def test_numeric_expressions(operator, values, expected):
     action.add_effect(fluent=z, value=Plus(z, 30))
     action.add_effect(fluent=a, value=Minus(x, 15))
     action.add_effect(fluent=b, value=Times(a, Plus(b, 300)))
-
-
     assert regression(operator(*values), action) == operator(*expected)
 
 
