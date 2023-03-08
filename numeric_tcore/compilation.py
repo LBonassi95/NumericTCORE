@@ -34,7 +34,7 @@ from unified_planning.engines.compilers.utils import (
 )
 from typing import List, Dict, Tuple
 from numeric_tcore.numeric_regression import regression
-
+from numeric_tcore.compilation_helper import *
 
 NUM = "num"
 CONSTRAINTS = "constraints"
@@ -129,16 +129,18 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         self._problem.name = f"{self.name}_{problem.name}"
         A = self._problem.actions
         I = self._problem.initial_values
-        C = self._build_constraint_list(
-            expression_quantifier_remover, self._problem.trajectory_constraints
+        C = build_constraint_list(
+            expression_quantifier_remover, self._problem
         )
         # create a list that contains trajectory_constraints
         # trajectory_constraints can contain quantifiers that need to be removed
+        if len(C) == 1 and C[0] == True:
+            raise Exception("No trajectory constraints to remove")
         relevancy_dict = self._build_relevancy_dict(env, C)
         A_prime: List["up.model.effect.Effect"] = list()
         state_evaluator = StateEvaluator(self._problem)
         I_prime, F_prime = self._get_monitoring_atoms(state_evaluator, C, UPCOWState(I))
-        G_prime = And([self._monitoring_atom_dict[c] for c in self._get_landmark_constraints(C)])
+        G_prime = And([self._monitoring_atom_dict[c] for c in get_landmark_constraints(C)])
         trace_back_map: Dict[Action, Tuple[Action, List[FNode]]] = {}
         assert isinstance(self._grounding_result.map_back_action_instance, partial)
         map_grounded_action = self._grounding_result.map_back_action_instance.keywords["map"]
@@ -199,21 +201,6 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         return CompilerResult(
             self._problem, partial(lift_action_instance, map=trace_back_map), self.name
         )
-
-    def _build_constraint_list(self, expression_quantifier_remover, constraints):
-        C_temp = (And(constraints)).simplify()
-        C_list = C_temp.args if C_temp.is_and() else [C_temp]
-        C_to_return = (And(self._remove_quantifier(expression_quantifier_remover, C_list))).simplify()
-        return C_to_return.args if C_to_return.is_and() else [C_to_return]
-
-    def _remove_quantifier(self, expression_quantifier_remover, C):
-        new_C = []
-        for c in C:
-            assert c.node_type is not OperatorKind.EXISTS
-            new_C.append(
-                expression_quantifier_remover.remove_quantifiers(c, self._problem)
-            )
-        return new_C
 
     def _manage_sa_compilation(self, env, phi, psi, m_atom, a, E):
         R1 = (regression(phi, a)).simplify()
@@ -361,11 +348,6 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
             return atoms
         else:
             return []
-
-    def _get_landmark_constraints(self, C):
-        for constr in C:
-            if constr.is_sometime() or constr.is_sometime_after():
-                yield constr
 
     # def _gamma_substitution(self, env, literal, action):
     #     negated_literal = env.expression_manager.Not(expression=literal)
