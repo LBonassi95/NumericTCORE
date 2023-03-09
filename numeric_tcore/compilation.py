@@ -35,6 +35,7 @@ from unified_planning.engines.compilers.utils import (
 from typing import List, Dict, Tuple
 from numeric_tcore.numeric_regression import regression
 from numeric_tcore.compilation_helper import *
+from numeric_tcore.achievers_helper import *
 
 NUM = "num"
 CONSTRAINTS = "constraints"
@@ -43,7 +44,7 @@ GOAL = "goal"
 SEEN_PHI = "seen-phi"
 SEEN_PSI = "seen-psi"
 SEPARATOR = "-"
-
+UNKNOWN_CONSTRAINT_ERROR_MSG = "ERROR This compiler cannot handle this constraint = {}"
 
 class NumericCompiler(engines.engine.Engine, CompilerMixin):
     """
@@ -55,12 +56,13 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
     This `Compiler` supports only the the `TRAJECTORY_CONSTRAINTS_REMOVING` :class:`~unified_planning.engines.CompilationKind`.
     """
 
-    def __init__(self):
+    def __init__(self, achiever_computation_strategy = REGRESSION):
         engines.Engine.__init__(self)
         CompilerMixin.__init__(self, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
         self._monitoring_atom_dict: Dict[
             "up.model.fnode.FNode", "up.model.fnode.FNode"
         ] = {}
+        self.achiever_helper = AchieverHelper(achiever_computation_strategy)
 
     @property
     def name(self):
@@ -117,6 +119,9 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
             only `TRAJECTORY_CONSTRAINTS_REMOVING` is supported by this compiler
         :return: The resulting `CompilerResult` data structure.
         """
+
+        logger = Logger()
+
         assert isinstance(problem, Problem)
         env = problem.env
         assert isinstance(env, Environment)
@@ -127,137 +132,145 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         assert isinstance(self._grounding_result.problem, Problem)
         self._problem = self._grounding_result.problem.clone()
         self._problem.name = f"{self.name}_{problem.name}"
-        A = self._problem.actions
-        I = self._problem.initial_values
-        C = build_constraint_list(
+        actions = self._problem.actions
+        initial_state = self._problem.initial_values
+        constraints = build_constraint_list(
             expression_quantifier_remover, self._problem
         )
         # create a list that contains trajectory_constraints
         # trajectory_constraints can contain quantifiers that need to be removed
-        if len(C) == 1 and C[0] == True:
+        if len(constraints) == 1 and constraints[0] == True:
             raise Exception("No trajectory constraints to remove")
-        relevancy_dict = self._build_relevancy_dict(env, C)
-        A_prime: List["up.model.effect.Effect"] = list()
+        var2constraints_dict = self._build_var2constraints_dict(env, constraints)
         state_evaluator = StateEvaluator(self._problem)
-        I_prime, F_prime = self._get_monitoring_atoms(state_evaluator, C, UPCOWState(I))
-        G_prime = And([self._monitoring_atom_dict[c] for c in get_landmark_constraints(C)])
+
+        actions_prime: List["up.model.effect.Effect"] = list()
+
+        initial_state_prime, f_prime = self._get_monitoring_atoms(state_evaluator, constraints, UPCOWState(initial_state))
+
+        goal_prime = And([self._monitoring_atom_dict[c] for c in get_landmark_constraints(constraints)])
+
+        ############# BOOKKEEPING #############
         trace_back_map: Dict[Action, Tuple[Action, List[FNode]]] = {}
         assert isinstance(self._grounding_result.map_back_action_instance, partial)
         map_grounded_action = self._grounding_result.map_back_action_instance.keywords["map"]
-        for a in A:
+        #######################################
+
+        for a in actions:
             map_value = map_grounded_action[a]
             assert isinstance(a, InstantaneousAction)
-            E = []
-            relevant_constraints = self._get_relevant_constraints(a, relevancy_dict)
-            for c in relevant_constraints:
-                # manage the action for each trajectory_constraints that is relevant
-                if c.is_always():
-                    precondition, to_add = self._manage_always_compilation(
-                        env, c.args[0], a
-                    )
-                elif c.is_at_most_once():
-                    precondition, to_add = self._manage_amo_compilation(
-                        env, c.args[0], self._monitoring_atom_dict[c], a, E
-                    )
-                elif c.is_sometime_before():
-                    precondition, to_add = self._manage_sb_compilation(
-                        env, c.args[0], c.args[1], self._monitoring_atom_dict[c], a, E
-                    )
-                elif c.is_sometime():
-                    self._manage_sometime_compilation(
-                        env, c.args[0], self._monitoring_atom_dict[c], a, E
-                    )
-                elif c.is_sometime_after():
-                    self._manage_sa_compilation(
-                        env, c.args[0], c.args[1], self._monitoring_atom_dict[c], a, E
-                    )
-                else:
-                    raise Exception(
-                        f"ERROR This compiler cannot handle this constraint = {c}"
-                    )
-                if c.is_always() or c.is_at_most_once() or c.is_sometime_before():
-                    if to_add and not precondition.is_true():
-                        a.preconditions.append(precondition)
-            for eff in E:
+            relevant_constraints = self._get_relevant_constraints(a, var2constraints_dict)
+            # relevant_constraints containts the constraints which have as argument formulas with at least one variable affected by the action
+            # If a constraint is defined over varibles not appearing in the effect of the action, then the regression will leave the formula(s) unchanged.
+            # Example always (x > 0) \vee (x < 10). If x does not appear in the effect of an action "a", then R((x > 0) \vee (x < 10), a) = (x > 0) \vee (x < 10)
+            # Wether or not an action "a" is actually an achiever is checked later.
+            new_P, new_E = self._get_preconditions_and_effects(relevant_constraints, a, env)
+            
+            logger.new_preconditions += len(new_P)
+            logger.new_effects += len(new_E)
+
+            for pre in new_P:
+                a.preconditions.append(pre)
+
+            for eff in new_E:
                 a.effects.append(eff)
             if FALSE() not in a.preconditions:
-                A_prime.append(a)
+                actions_prime.append(a)
             trace_back_map[a] = map_value
         # create new problem to return
         # adding new fluents, goal, initial values and actions
-        G_new = (And(self._problem.goals, G_prime)).simplify()
+        new_goal = (And(self._problem.goals, goal_prime)).simplify()
         self._problem.clear_goals()
-        self._problem.add_goal(G_new)
+        self._problem.add_goal(new_goal)
         self._problem.clear_trajectory_constraints()
-        for fluent in F_prime:
+        for fluent in f_prime:
             self._problem.add_fluent(fluent)
         self._problem.clear_actions()
-        for action in A_prime:
+        for action in actions_prime:
             self._problem.add_action(action)
-        for init_val in I_prime:
+        for init_val in initial_state_prime:
             self._problem.set_initial_value(
                 Fluent(f"{init_val}", BoolType()), True
             )
         return CompilerResult(
             self._problem, partial(lift_action_instance, map=trace_back_map), self.name
-        )
+        ), logger
+    
+    def _get_preconditions_and_effects(self, relevant_constraints, a, env):
+        new_P = []
+        new_E = []
+        for c in relevant_constraints:
+            assert isinstance(c, FNode)
 
-    def _manage_sa_compilation(self, env, phi, psi, m_atom, a, E):
-        R1 = (regression(phi, a)).simplify()
-        R2 = (regression(psi, a)).simplify()
-        if phi != R1 or psi != R2:
-            cond = (
-                And([R1, Not(R2)])
-            ).simplify()
-            self._add_cond_eff(env, E, cond, Not(m_atom))
-        if psi != R2:
-            self._add_cond_eff(env, E, R2, m_atom)
+            if c.is_always():
+                self._compile_always(a, c, new_P)
 
-    def _manage_sometime_compilation(self, env, phi, m_atom, a, E):
-        R = (regression(phi, a)).simplify()
-        if R != phi:
-            self._add_cond_eff(env, E, R, m_atom)
+            elif c.is_at_most_once():
+                self._compile_amo(a, c, new_P, new_E)
 
-    def _manage_sb_compilation(self, env, phi, psi, m_atom, a, E):
-        R_phi = (regression(phi, a)).simplify()
-        if R_phi == phi:
-            added_precond = (None, False)
-        else:
-            rho = (Or([Not(R_phi), m_atom])).simplify()
-            added_precond = (rho, True)
-        R_psi = (regression(psi, a)).simplify()
-        if R_psi != psi:
-            self._add_cond_eff(env, E, R_psi, m_atom)
-        return added_precond
+            elif c.is_sometime_before():
+                self._compile_sb(a, c, new_P, new_E)
 
-    def _manage_amo_compilation(self, env, phi, m_atom, a, E):
-        R = (regression(phi, a)).simplify()
-        if R == phi:
-            return None, False
-        else:
-            rho = (
-                Or(
-                    [
-                        Not(R),
-                        Not(m_atom),
-                        phi,
-                    ]
+            elif c.is_sometime():
+                self._compile_sometime(a, c, new_E)
+
+            elif c.is_sometime_after():
+                self._compile_sa(a, c, new_E)
+            else:
+                raise Exception(
+                    UNKNOWN_CONSTRAINT_ERROR_MSG.format(c)
                 )
-            ).simplify()
-            self._add_cond_eff(env, E, R, m_atom)
-            return rho, True
+            
+        return new_P, new_E
 
-    def _manage_always_compilation(self, env, phi, a):
-        R = (regression(phi, a)).simplify()
-        if R == phi:
-            return None, False
-        else:
-            return R, True
+    def _compile_sa(self, a: InstantaneousAction, c: FNode, new_E: list):
+        phi = c.args[0]
+        psi = c.args[1]
+        hold_c = self._monitoring_atom_dict[c]
+        if self.achiever_helper.isAchiever(a, And([phi, Not(psi)])):
+            r_phi_and_not_psi_a = regression(And([phi, Not(psi)]), a).simplify()
+            self._add_cond_eff(new_E, r_phi_and_not_psi_a, Not(hold_c))
+        if self.achiever_helper.isAchiever(a, psi):
+            r_psi_a = regression(psi, a).simplify()
+            self._add_cond_eff(new_E, r_psi_a, hold_c)
 
-    def _add_cond_eff(self, env, E, cond, eff):
+    def _compile_sometime(self, a: InstantaneousAction, c: FNode, new_E: list):
+        phi = c.args[0]
+        hold_c = self._monitoring_atom_dict[c]
+        if self.achiever_helper.isAchiever(a, phi):
+            r_phi_a = regression(phi, a).simplify()
+            self._add_cond_eff(new_E, r_phi_a, hold_c)
+
+    def _compile_sb(self, a: InstantaneousAction, c: FNode, new_P: list, new_E: list):
+        phi = c.args[0]
+        psi = c.args[1]
+        seen_psi = self._monitoring_atom_dict[c]
+        
+        if self.achiever_helper.isAchiever(a, phi):
+            r_phi_a = regression(phi, a).simplify()
+            new_P.append(Or([Not(r_phi_a), seen_psi]).simplify())
+        if self.achiever_helper.isAchiever(a, psi):
+            r_psi_a = regression(psi, a).simplify()
+            self._add_cond_eff(new_E, r_psi_a, seen_psi)
+
+
+    def _compile_amo(self, a: InstantaneousAction, c: FNode, new_P: list, new_E: list):
+        phi = c.args[0]
+        seen_phi = self._monitoring_atom_dict[c]
+        if self.achiever_helper.isAchiever(a, phi):
+            r_phi_a = (regression(phi, a)).simplify()
+            new_P.append(Or([Not(r_phi_a), Not(seen_phi), phi]).simplify())
+            self._add_cond_eff(new_E, r_phi_a, seen_phi)
+
+    def _compile_always(self, a: InstantaneousAction, c: FNode, new_P: list):
+        phi = c.args[0]
+        if self.achiever_helper.isAchiever(a, Not(phi)):
+            new_P.append((regression(phi, a)).simplify())
+
+    def _add_cond_eff(self, new_E: list, cond: FNode, eff):
         if not cond.simplify().is_false():
             if eff.is_not():
-                E.append(
+                new_E.append(
                     up.model.Effect(
                         condition=cond,
                         fluent=eff.args[0],
@@ -265,7 +278,7 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
                     )
                 )
             else:
-                E.append(
+                new_E.append(
                     up.model.Effect(
                         condition=cond,
                         fluent=eff,
@@ -273,10 +286,17 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
                     )
                 )
 
-    def _get_relevant_constraints(self, a: InstantaneousAction, relevancy_dict: Dict) -> list[FNode]:
+    def _get_relevant_constraints(self, a: InstantaneousAction, var2constraints_dict: Dict) -> list[FNode]:
+        '''
+        Returns the list of constraints relevant to the action a;
+        A constraints is deemed releveant when the argument formula contains at least one variable which is affected by a.
+        If an action "a" and a formula \phi do not share any variable, then we have R(\phi, a) = \phi.
+        We could check this by checking R(\phi, a) = \phi for every action "a" and every constraint featuring \phi, but this would be very inefficient.
+        
+        '''
         relevant_constrains = []
         for eff in a.effects:
-            constr = relevancy_dict.get(eff.fluent, [])
+            constr = var2constraints_dict.get(eff.fluent, [])
             for c in constr:
                 if c not in relevant_constrains:
                     relevant_constrains.append(c)
@@ -329,65 +349,14 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
                 monitoring_atoms_counter += 1
         return initial_state_prime, monitoring_atoms
 
-    def _build_relevancy_dict(self, env: Environment, C: list[FNode]):
+    def _build_var2constraints_dict(self, env: Environment, C: list[FNode]):
+        '''
+        Builds a dictionary that maps each variable to the list of constraints featuring that variable.
+        '''
         assert isinstance(env.free_vars_extractor, FreeVarsExtractor)
-        relevancy_dict = {}
+        var2constraints_dict = {}
         for c in C:
             for atom in env.free_vars_extractor.get(c):
-                conditions_list = relevancy_dict.setdefault(atom, [])
+                conditions_list = var2constraints_dict.setdefault(atom, [])
                 conditions_list.append(c)
-        return relevancy_dict
-
-    def _get_all_atoms(self, condition):
-        if condition.is_fluent_exp():
-            return [condition]
-        elif condition.is_and() or condition.is_or() or condition.is_not():
-            atoms = []
-            for arg in condition.args:
-                atoms += self._get_all_atoms(arg)
-            return atoms
-        else:
-            return []
-
-    # def _gamma_substitution(self, env, literal, action):
-    #     negated_literal = env.expression_manager.Not(expression=literal)
-    #     gamma1 = self._gamma(env, literal, action)
-    #     gamma2 = env.expression_manager.Not(self._gamma(env, negated_literal, action))
-    #     conjunction = env.expression_manager.And([literal, gamma2])
-    #     return env.expression_manager.Or([gamma1, conjunction])
-
-    # def _gamma(self, env, literal, action):
-    #     disjunction = []
-    #     for eff in action.effects:
-    #         cond = eff.condition
-    #         if eff.value.is_false():
-    #             eff = env.expression_manager.Not(eff.fluent)
-    #         else:
-    #             eff = eff.fluent
-    #         if literal == eff:
-    #             if cond.is_true():
-    #                 return env.expression_manager.TRUE()
-    #             disjunction.append(cond)
-    #     if not disjunction:
-    #         return False
-    #     return env.expression_manager.Or(disjunction)
-
-    # def _regression(self, env, phi, action):
-    #     if phi.is_false() or phi.is_true():
-    #         return phi
-    #     elif phi.is_fluent_exp():
-    #         return self._gamma_substitution(env, phi, action)
-    #     elif phi.is_or():
-    #         return env.expression_manager.Or(
-    #             [self._regression(env, component, action) for component in phi.args]
-    #         )
-    #     elif phi.is_and():
-    #         return env.expression_manager.And(
-    #             [self._regression(env, component, action) for component in phi.args]
-    #         )
-    #     elif phi.is_not():
-    #         return env.expression_manager.Not(self._regression(env, phi.arg(0), action))
-    #     else:
-    #         raise up.exceptions.UPUsageError(
-    #             "This compiler cannot handle this expression"
-    #         )
+        return var2constraints_dict

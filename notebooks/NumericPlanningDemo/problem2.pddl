@@ -23,10 +23,6 @@
         )
     )
 	(:constraints (and
-		(at-most-once (= (x-position a1) 0))
-        (always (< (x-position a1) 10))
-        (always (< (y-position a1) 10))
-        (always (> (x-position a1) -10))
-        (always (> (y-position a1) -10))
+        (always (< (x-position a1) 1))
 	))
 )
