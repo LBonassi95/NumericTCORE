@@ -30,14 +30,18 @@ class AchieverHelper:
             return phi != regression(phi, action)
 
         elif self.strategy == DELTA:
+
+            if phi != regression(phi, action):
             
-            numeric_conditions = self._get_numeric_conditions(phi)
+                numeric_conditions = self._get_numeric_conditions(phi)
 
-            for condition in numeric_conditions:
-                if self.deltaAchieverStrategy(condition, action):
-                    return True
+                for condition in numeric_conditions:
+                    if self.deltaAchieverStrategy(condition, action):
+                        return True
 
-            return False
+                return False
+            else:
+                return False
     
     def _get_numeric_conditions(self, phi: FNode):
         if phi.is_and() or phi.is_or():
@@ -46,12 +50,12 @@ class AchieverHelper:
                 conditions += self._get_numeric_conditions(c)
             return conditions
         elif phi.is_not():
-             if not (phi.args[0].is_le() or phi.args[0].is_lt()):
+             if not (phi.args[0].is_le() or phi.args[0].is_lt() or phi.args[0].is_equals()):
                 raise Exception(NNF_ERROR.format(phi))
              else:
                  return [phi]
         else:
-            assert phi.is_le() or phi.is_lt()
+            assert phi.is_le() or phi.is_lt() or phi.is_equals()
             return [phi]
 
     def _get_negated_condition(self, expression: FNode):
@@ -69,9 +73,14 @@ class AchieverHelper:
         # if not self._constant_numeric_influence(action, expression):
         #     return True
 
-        assert expression.is_le() or expression.is_lt() or expression.is_not()
+        assert expression.is_le() or expression.is_lt() or expression.is_not() or expression.is_equals()
+
+        if expression.is_equals():
+            return True
         
         if expression.is_not():
+            if expression.is_equals():
+                return True
             expression = self._get_negated_condition(expression)
 
         new_expression, new_vars_dict = self._preprocess_expression(expression)

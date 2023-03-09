@@ -152,6 +152,7 @@ def test_delta_computation(expression, action, expected):
 
 achievers_combinations = [
     (GE(Plus(x, y), 0), a3, True),
+    (Equals(Plus(x, y), 0), a3, True),
     (Not(GE(Plus(x, y), 0)), a3, False),
     (GE(Plus(Times(-2, x), y), 0), a3, False)
 ]
