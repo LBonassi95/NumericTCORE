@@ -58,6 +58,16 @@ def test_compilation_zeno2():
         new_problem = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING).problem
 
 
+def test_compilation_counters():
+    reader = PDDLReader()
+    domain_path = pkg_resources.resource_filename(__name__, 'pddl/counters/domain.pddl')
+    problem_path = pkg_resources.resource_filename(__name__, 'pddl/counters/instance_12.pddl')
+    problem = reader.parse_problem(domain_path, problem_path)
+    compiler = NumericCompiler() 
+    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
+    new_problem = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING).problem
+
+
 def test_compilation_rovers():
     reader = PDDLReader()
     domain_path = pkg_resources.resource_filename(__name__, 'pddl/rovers/domain.pddl')

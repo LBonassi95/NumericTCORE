@@ -1,7 +1,7 @@
 from numeric_tcore.numeric_regression import regression
 from unified_planning.model.fnode import FNode
 from unified_planning.shortcuts import *
-from unified_planning.model.walkers import LinearChecker, FreeVarsExtractor, Substituter
+from unified_planning.model.walkers import LinearChecker, FreeVarsExtractor, Substituter, Simplifier, Nnf
 from sympy.parsing.sympy_parser import parse_expr, standard_transformations
 
 
@@ -13,12 +13,17 @@ NNF_ERROR = "Error! The formula '{}' is not in NNF"
 
 class AchieverHelper:
     
-    def __init__(self, strategy) -> None:
+    def __init__(self, strategy, problem = None) -> None:
         assert strategy in STRATEGIES
         self.strategy = strategy
         self.substituter = Substituter(get_env())
         self.extractor = FreeVarsExtractor()
         self.linear_checker = LinearChecker()
+        self.nnf_transformer = Nnf(get_env())
+        self.problem = problem
+        if self.problem is not None:
+            self.simplifier = Simplifier(get_env(), self.problem)
+
 
 
     def isAchiever(self, action, phi):
@@ -32,7 +37,8 @@ class AchieverHelper:
         elif self.strategy == DELTA:
 
             if phi != regression(phi, action):
-            
+
+                phi = self.nnf_transformer.get_nnf_expression(phi)
                 numeric_conditions = self._get_numeric_conditions(phi)
 
                 for condition in numeric_conditions:
@@ -83,10 +89,22 @@ class AchieverHelper:
                 return True
             expression = self._get_negated_condition(expression)
 
-        new_expression, new_vars_dict = self._preprocess_expression(expression)
-
+        
         regressed_expression = regression(expression, action)
+
+        if self.problem is not None:
+            expression = self.simplifier.simplify(expression)
+            regressed_expression = self.simplifier.simplify(regressed_expression)
+
+        if regressed_expression == FALSE() or regressed_expression == TRUE() or expression == FALSE() or expression == TRUE(): 
+            return True
+
+        fluents = self.extractor.get(expression) | self.extractor.get(regressed_expression)
+        new_vars_dict = self._get_substitutions(fluents)
+
+        new_expression = self.substituter.substitute(expression, new_vars_dict)
         regressed_expression = self.substituter.substitute(regressed_expression, new_vars_dict)
+        # regressed_expression = self.substituter.substitute(regressed_expression, new_vars_dict)
 
         if regressed_expression == new_expression:
             # We do this check just to speed up the process
@@ -112,21 +130,19 @@ class AchieverHelper:
         delta = normalized_regressed_expression - normalized_expression
         return delta 
     
-    def _preprocess_expression(self, expression):
+    def _get_substitutions(self, fluents):
         '''
         Before converting an expression to a sympy expression, we need to substitute all the
         fluents with new variables var0, var1 ecc...
         This is because sympy interprets fluent(a, b) as a function, not as a variable.
         '''
         new_vars_dict = {}
-        i = 0
-        for fluent in self.extractor.get(expression):
-            new_fl = Fluent(f'var{i}', RealType())
+        index = 0
+        for fluent in fluents:
+            new_fl = Fluent(f'var{index}', RealType())
             new_vars_dict[fluent] = FluentExp(new_fl)
-            i += 1
-        new_expression = self.substituter.substitute(expression, new_vars_dict)
-        return new_expression, new_vars_dict
-    
+            index += 1
+        return new_vars_dict
 
     # def _constant_numeric_influence(self, action: InstantaneousAction, expression: FNode):
 

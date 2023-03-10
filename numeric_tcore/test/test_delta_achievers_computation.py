@@ -7,6 +7,7 @@ from unified_planning.io.pddl_writer import PDDLWriter
 from unified_planning.engines.compilers.grounder import Grounder
 from unified_planning.model.fnode import FNode
 from numeric_tcore.achievers_helper import *
+from unified_planning.model.walkers import Simplifier
 import pkg_resources
 
 from sympy.parsing.sympy_parser import parse_expr, standard_transformations
@@ -80,50 +81,6 @@ def test_achiever_computation(action,formula,strategy,expected):
     assert strategy.isAchiever(action, formula) == expected
 
 
-
-def build_coefficient_dictionary(expr: FNode):
-    assert expr.is_le() or expr.is_lt() or expr.is_not()
-
-    if expr.is_not():
-        expr = delta_achiever._get_negated_condition(expr)
-    
-    sympy_expr = parse_expr(str(expr), transformations=standard_transformations)
-    coefficients = {}
-
-    # If we have lhs <= rhs, we want to get 0 <= rhs - lhs
-
-    normalized_expression = sympy_expr.rhs - sympy_expr.lhs
-
-    for symbol in normalized_expression.free_symbols:
-        coefficients[str(symbol)] = normalized_expression.coeff(symbol)
-
-    return coefficients
-
-expressions = [
-    (GE(Times(-3, Plus(y, x)), Times(x, -7)), {'x': 4, 'y': -3}),
-    (GE(Plus(Times(2.5, x), Plus(2, 3)), Times(3, y)), {'x': 2.5, 'y': -3}),
-    (GT(0, Minus(Times(x, Plus(5, 5)), Times(14, z))), {'x': -10, 'z': 14}),
-    (GT(pos_x(b1), 0), {'pos_x(b1)': 1}),
-    (GT(Times(4, pos_x(b1)), Times(-2, pos_y(b2))), {'pos_x(b1)': 4, 'pos-y(b2)': 2}),
-    (GT(Times(3, Minus(pos_x(b1), Times(5, pos_x(b2)))), 0), {'pos_x(b1)': 3, 'pos_x(b2)': -15}),
-    (GT(Times(3, Minus(pos_x(b1), Times(5, pos_x(b1)))), 0), {'pos_x(b1)': -12}),
-    (GT(Times(3, Minus(pos_x(b1), Times(5, rel(b1, b2)))), 0), {'pos_x(b1)': 3, 'rel(b1, b2)': -15}),
-    (GT(Times(3, Minus(rel(b2, b1), Times(5, rel(b1, b2)))), 0), {'rel(b2, b1)': 3, 'rel(b1, b2)': -15}),
-    (GT(Times(3, Minus(rel(b2, b1), Times(5, rel(b2, b1)))), 0), {'rel(b2, b1)': -12}),
-    (LE(Times(4, pos_x(b1)), Times(-2, pos_y(b2))), {'pos_x(b1)': -4, 'pos-y(b2)': -2}),
-    (Not(GT(Times(4, pos_x(b1)), Times(-2, pos_y(b2)))), {'pos_x(b1)': -4, 'pos-y(b2)': -2}),
-    (Not(LE(Times(4, pos_x(b1)), Times(-2, pos_y(b2)))), {'pos_x(b1)': 4, 'pos-y(b2)': 2}),
-]
-@pytest.mark.parametrize("expression,expected", expressions)
-def test_build_coefficient_dict(expression, expected):
-    expression, var_dictionary = delta_achiever._preprocess_expression(expression)
-    res = build_coefficient_dictionary(expression)
-    map_back_res = {}
-    for k, v in var_dictionary.items():
-        map_back_res[str(k)] = res[str(v)]
-    assert map_back_res == expected
-
-
 delta_combinations = [
 
     (GE(Plus(x, y), 0), a3, 3),
@@ -141,9 +98,13 @@ def test_delta_computation(expression, action, expected):
     if expression.is_not():
         expression = delta_achiever._get_negated_condition(expression)
 
-    new_expression, new_vars_dict = delta_achiever._preprocess_expression(expression)
-
     regressed_expression = regression(expression, action)
+
+    fluents = delta_achiever.extractor.get(expression) | delta_achiever.extractor.get(regressed_expression)
+
+    new_vars_dict = delta_achiever._get_substitutions(fluents)
+
+    new_expression = delta_achiever.substituter.substitute(expression, new_vars_dict)
     regressed_expression = delta_achiever.substituter.substitute(regressed_expression, new_vars_dict)
 
     delta = delta_achiever._get_delta(new_expression, regressed_expression)
@@ -204,15 +165,20 @@ def test_is_achiever_computation_complex_formulas(expression, action, expected):
     assert result == expected
 
 
-# combinations_ncli = [
-#     (GE(x, 0), a3, True),
-#     (GE(Times(x, y), 0), a3, False),
-#     (GE(x, 0), lineffect, False),
-#     (GE(x, 0), nonlineffect, False),
-#     (GE(x, 0), selfinterference, True),
-#     (GE(x, 0), selfinterference, False),
-# ]
-# @pytest.mark.parametrize("expression,action,expected", combinations_ncli)
-# def test_cli(expression, action, expected):
-#     result = delta_achiever._constant_numeric_influence(action, expression)
-#     assert result == expected
+def test_achiever_computation_with_static_variables():
+    reader = PDDLReader()
+    domain_path = pkg_resources.resource_filename(__name__, 'pddl/zeno/zenonumeric.pddl')
+    problem_path = pkg_resources.resource_filename(__name__, 'pddl/zeno/pfile1')
+    problem = reader.parse_problem(domain_path, problem_path)
+    grounding_result = Grounder().compile(
+            problem, CompilationKind.GROUNDING
+        )
+    ground_problem = grounding_result.problem
+    fly_slow_action = [act for act in ground_problem.actions if act.name == 'fly-slow_plane1_city0_city1'][0]
+    fuel_fluent = [fluent for fluent in ground_problem.fluents if fluent.name == 'fuel'][0]
+    plane1 = [obj for obj in ground_problem.all_objects if obj.name == 'plane1'][0]
+    delta_achiever = AchieverHelper(DELTA, ground_problem.clone())
+    formula = GT(fuel_fluent(plane1), 6000)
+    assert delta_achiever.isAchiever(fly_slow_action, formula) == False
+    for a in ground_problem.actions:
+        delta_achiever.isAchiever(a, formula)

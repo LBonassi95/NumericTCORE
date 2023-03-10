@@ -62,7 +62,8 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         self._monitoring_atom_dict: Dict[
             "up.model.fnode.FNode", "up.model.fnode.FNode"
         ] = {}
-        self.achiever_helper = AchieverHelper(achiever_computation_strategy)
+        self.achiever_computation_strategy = achiever_computation_strategy
+        self.achiever_helper = None
 
     @property
     def name(self):
@@ -130,6 +131,7 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
             problem, CompilationKind.GROUNDING
         )
         assert isinstance(self._grounding_result.problem, Problem)
+        self.achiever_helper = AchieverHelper(self.achiever_computation_strategy, self._grounding_result.problem.clone())
         self._problem = self._grounding_result.problem.clone()
         self._problem.name = f"{self.name}_{problem.name}"
         actions = self._problem.actions
