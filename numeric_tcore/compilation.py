@@ -161,18 +161,25 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         for a in actions:
             map_value = map_grounded_action[a]
             assert isinstance(a, InstantaneousAction)
-            relevant_constraints = self._get_relevant_constraints(a, var2constraints_dict)
-            # relevant_constraints containts the constraints which have as argument formulas with at least one variable affected by the action
-            # If a constraint is defined over varibles not appearing in the effect of the action, then the regression will leave the formula(s) unchanged.
-            # Example always (x > 0) \vee (x < 10). If x does not appear in the effect of an action "a", then R((x > 0) \vee (x < 10), a) = (x > 0) \vee (x < 10)
-            # Wether or not an action "a" is actually an achiever is checked later.
+
+            if self.achiever_computation_strategy != NAIVE:
+                relevant_constraints = self._get_relevant_constraints(a, var2constraints_dict)
+                # relevant_constraints containts the constraints which have as argument formulas with at least one variable affected by the action
+                # If a constraint is defined over varibles not appearing in the effect of the action, then the regression will leave the formula(s) unchanged.
+                # Example always (x > 0) \vee (x < 10). If x does not appear in the effect of an action "a", then R((x > 0) \vee (x < 10), a) = (x > 0) \vee (x < 10)
+                # Wether or not an action "a" is actually an achiever is checked later.
+            else:
+                # If the achiever computation strategy is NAIVE, then all the constraints are relevant
+                relevant_constraints = constraints
+                
             new_P, new_E = self._get_preconditions_and_effects(relevant_constraints, a, env)
             
             logger.new_preconditions += len(new_P)
             logger.new_effects += len(new_E)
 
             for pre in new_P:
-                a.preconditions.append(pre)
+                if pre != TRUE():
+                    a.preconditions.append(pre)
 
             for eff in new_E:
                 a.effects.append(eff)

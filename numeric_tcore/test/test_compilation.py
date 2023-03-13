@@ -3,11 +3,12 @@ from unified_planning.model import problem
 from unified_planning.shortcuts import *
 from unified_planning.model import Problem
 from unified_planning.io.pddl_reader import PDDLReader
-from unified_planning.io.pddl_writer import PDDLWriter
+from unified_planning.io.pddl_writer import PDDLWriter, ConverterToPDDLString
 from unified_planning.engines.compilers.grounder import Grounder
 from unified_planning.model.fnode import FNode
 from numeric_tcore.compilation import NumericCompiler
 import pkg_resources
+from numeric_tcore.achievers_helper import *
 
 def test_compilation():
     reader = PDDLReader()
@@ -16,7 +17,23 @@ def test_compilation():
     problem = reader.parse_problem(domain_path, problem_path)
     compiler = NumericCompiler() 
     tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
-    new_problem = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING).problem
+    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
+
+
+def test_compilation_naive():
+    reader = PDDLReader()
+    domain_path = pkg_resources.resource_filename(__name__, 'pddl/flags/domain.pddl')
+    problem_path = pkg_resources.resource_filename(__name__, 'pddl/flags/p01.pddl')
+    problem = reader.parse_problem(domain_path, problem_path)
+    compiler = NumericCompiler(achiever_computation_strategy=NAIVE) 
+    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
+    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
+    # for a in new_problem.actions:
+    #     for p in a.preconditions:
+    #         tmp = p.simplify()
+    #     print()
 
 
 def test_compilation_sailing():
@@ -26,7 +43,8 @@ def test_compilation_sailing():
     problem = reader.parse_problem(domain_path, problem_path)
     compiler = NumericCompiler() 
     tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
-    new_problem = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING).problem
+    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
 
 def test_compilation_sailing_2():
     reader = PDDLReader()
@@ -35,7 +53,8 @@ def test_compilation_sailing_2():
     problem = reader.parse_problem(domain_path, problem_path)
     compiler = NumericCompiler() 
     tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
-    new_problem = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING).problem
+    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
 
 
 def test_compilation_zeno():
@@ -45,7 +64,8 @@ def test_compilation_zeno():
     problem = reader.parse_problem(domain_path, problem_path)
     compiler = NumericCompiler() 
     tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
-    new_problem = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING).problem
+    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
 
 def test_compilation_zeno2():
     reader = PDDLReader()
@@ -55,7 +75,8 @@ def test_compilation_zeno2():
     compiler = NumericCompiler() 
     tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
     with pytest.raises(Exception):
-        new_problem = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING).problem
+        compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
 
 
 def test_compilation_counters():
@@ -65,7 +86,8 @@ def test_compilation_counters():
     problem = reader.parse_problem(domain_path, problem_path)
     compiler = NumericCompiler() 
     tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
-    new_problem = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING).problem
+    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
 
 
 def test_compilation_rovers():
@@ -75,4 +97,5 @@ def test_compilation_rovers():
     problem = reader.parse_problem(domain_path, problem_path)
     compiler = NumericCompiler() 
     tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
-    new_problem = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING).problem
+    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem

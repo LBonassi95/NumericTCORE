@@ -20,6 +20,6 @@
         )
     )
 	(:constraints (and
-		(sometime (> (y-position a1) 5))
+		(at-most-once (> (y-position a1) 5))
 	))
 )
