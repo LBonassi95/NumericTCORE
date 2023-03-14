@@ -69,14 +69,15 @@ def regression(expression: FNode, action: InstantaneousAction) -> FNode:
         # return Plus(regression(expression.args[0], action), regression(expression.args[1], action))
         return Plus([regression(arg, action) for arg in expression.args])
     elif expression.is_minus():
-        # return Minus(regression(expression.args[0], action), regression(expression.args[1], action))
-        return Minus([regression(arg, action) for arg in expression.args])
+        # For plus, we can have a list of arguments, but for minus, we can only have two arguments
+        # This is how it is implemented in the Unified Planning library
+        return Minus(regression(expression.args[0], action), regression(expression.args[1], action))
     elif expression.is_times():
         # return Times(regression(expression.args[0], action), regression(expression.args[1], action))
         return Times([regression(arg, action) for arg in expression.args])
     elif expression.is_div():
-        # return Div(regression(expression.args[0], action), regression(expression.args[1], action))
-        return Div([regression(arg, action) for arg in expression.args])
+        # Like minus, we can only have two arguments for division
+        return Div(regression(expression.args[0], action), regression(expression.args[1], action))
     elif expression.is_constant():
         return expression
     else:

@@ -57,6 +57,16 @@ def test_compilation_sailing_2():
     new_problem = compilation_result.problem
 
 
+def test_compilation_sailing_3():
+    reader = PDDLReader()
+    domain_path = pkg_resources.resource_filename(__name__, 'pddl/sailing/domain.pddl')
+    problem_path = pkg_resources.resource_filename(__name__, 'pddl/sailing/instance_1_1_1229.pddl')
+    problem = reader.parse_problem(domain_path, problem_path)
+    compiler = NumericCompiler() 
+    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
+    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
+
 def test_compilation_zeno():
     reader = PDDLReader()
     domain_path = pkg_resources.resource_filename(__name__, 'pddl/zeno/zenonumeric.pddl')
