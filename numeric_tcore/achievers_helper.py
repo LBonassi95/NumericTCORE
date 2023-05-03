@@ -20,12 +20,13 @@ class AchieverHelper:
         self.extractor = FreeVarsExtractor()
         self.linear_checker = LinearChecker()
         self.nnf_transformer = Nnf(get_env())
+        self.sympy_cache = {}
         self.problem = problem
         if self.problem is not None:
             self.simplifier = Simplifier(get_env(), self.problem)
 
 
-
+    #@profile
     def isAchiever(self, action, phi):
         
         if self.strategy == NAIVE:
@@ -36,18 +37,18 @@ class AchieverHelper:
 
         elif self.strategy == DELTA:
 
-            if phi != regression(phi, action):
+            #if phi != regression(phi, action):
 
-                phi = self.nnf_transformer.get_nnf_expression(phi)
-                numeric_conditions = self._get_numeric_conditions(phi)
+            phi = self.nnf_transformer.get_nnf_expression(phi)
+            numeric_conditions = self._get_numeric_conditions(phi)
 
-                for condition in numeric_conditions:
-                    if self.deltaAchieverStrategy(condition, action):
-                        return True
+            for condition in numeric_conditions:
+                if self.deltaAchieverStrategy(condition, action):
+                    return True
 
-                return False
-            else:
-                return False
+            return False
+            # else:
+            #     return False
     
     def _get_numeric_conditions(self, phi: FNode):
         if phi.is_and() or phi.is_or():
@@ -70,10 +71,12 @@ class AchieverHelper:
             return GT(expr.args[0], expr.args[1])
         elif expr.is_lt():
             return GE(expr.args[0], expr.args[1])
+        elif expr.is_equals():
+            return expr
         else:
             raise Exception(NNF_ERROR.format(expression))
 
-    
+    #@profile
     def deltaAchieverStrategy(self, expression: FNode, action):
 
         # if not self._constant_numeric_influence(action, expression):
@@ -81,12 +84,13 @@ class AchieverHelper:
 
         assert expression.is_le() or expression.is_lt() or expression.is_not() or expression.is_equals()
 
+        equality = False
         if expression.is_equals():
-            return True
+            equality = True
         
         if expression.is_not():
-            if expression.is_equals():
-                return True
+            if expression.args[0].is_equals():
+                equality = True
             expression = self._get_negated_condition(expression)
 
         
@@ -113,15 +117,40 @@ class AchieverHelper:
         delta = self._get_delta(new_expression, regressed_expression)
         if not delta.is_Number:
             return True
-        if delta < 0 or delta == 0:
+        
+        if delta == 0:
             return False
+        
         else:
-            return True
+            if equality == True:
+                return True
+            elif delta < 0:
+                return False
+            else:
+                return True
 
-    
+    #@profile
     def _get_delta(self, expr: FNode, regressed_expr: FNode):
-        sympy_expr = parse_expr(str(expr), transformations=standard_transformations)
-        sympy_regressed_expr = parse_expr(str(regressed_expr), transformations=standard_transformations)
+
+        if self.sympy_cache.get(expr) is not None:
+            sympy_expr = self.sympy_cache[expr]
+        else:
+            if expr.is_equals():
+                # This is just for compatibility with sympy
+                sympy_expr = parse_expr(str(expr).replace('==', '<='), transformations=standard_transformations)
+            else:
+                sympy_expr = parse_expr(str(expr), transformations=standard_transformations)
+            self.sympy_cache[expr] = sympy_expr
+        
+        if self.sympy_cache.get(regressed_expr) is not None:
+            sympy_regressed_expr = self.sympy_cache[regressed_expr]
+        else:
+            if regressed_expr.is_equals():
+                # This is just for compatibility with sympy
+                sympy_regressed_expr = parse_expr(str(regressed_expr).replace('==', '<='), transformations=standard_transformations)
+            else:
+                sympy_regressed_expr = parse_expr(str(regressed_expr), transformations=standard_transformations)
+            self.sympy_cache[regressed_expr] = sympy_regressed_expr
 
         # If we have lhs <= rhs, we want to get 0 <= rhs - lhs
         normalized_expression = sympy_expr.rhs - sympy_expr.lhs

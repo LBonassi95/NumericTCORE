@@ -67,6 +67,28 @@ def test_compilation_sailing_3():
     compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
     new_problem = compilation_result.problem
 
+def test_compilation_farm():
+    reader = PDDLReader()
+    domain_path = pkg_resources.resource_filename(__name__, 'pddl/farm/domain.pddl')
+    problem_path = pkg_resources.resource_filename(__name__, 'pddl/farm/instance_4_700_1229.pddl')
+    problem = reader.parse_problem(domain_path, problem_path)
+    compiler = NumericCompiler(achiever_computation_strategy=DELTA) 
+    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
+    with pytest.raises(Exception):
+        compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+        new_problem = compilation_result.problem
+    
+    compiler = NumericCompiler(achiever_computation_strategy=REGRESSION) 
+    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
+    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
+
+    compiler = NumericCompiler(achiever_computation_strategy=NAIVE) 
+    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
+    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
+
+    
 def test_compilation_zeno():
     reader = PDDLReader()
     domain_path = pkg_resources.resource_filename(__name__, 'pddl/zeno/zenonumeric.pddl')
@@ -85,8 +107,9 @@ def test_compilation_zeno2():
     compiler = NumericCompiler() 
     tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
     with pytest.raises(Exception):
+        print()
         compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
-    new_problem = compilation_result.problem
+        #new_problem = compilation_result.problem
 
 
 def test_compilation_counters():

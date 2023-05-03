@@ -105,7 +105,7 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         supported_kind.set_simulated_entities("SIMULATED_EFFECTS")
         supported_kind.set_constraints_kind("TRAJECTORY_CONSTRAINTS")
         return supported_kind
-
+    
     def _compile(
         self,
         problem: "up.model.AbstractProblem",
@@ -270,7 +270,8 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
             r_phi_a = (regression(phi, a)).simplify()
             new_P.append(Or([Not(r_phi_a), Not(seen_phi), phi]).simplify())
             self._add_cond_eff(new_E, r_phi_a, seen_phi)
-
+            
+    #@profile
     def _compile_always(self, a: InstantaneousAction, c: FNode, new_P: list):
         phi = c.args[0]
         if self.achiever_helper.isAchiever(a, Not(phi)):

@@ -113,9 +113,13 @@ def test_delta_computation(expression, action, expected):
 
 achievers_combinations = [
     (GE(Plus(x, y), 0), a3, True),
+    (LE(Plus(x, y), 0), a3, False),
     (Equals(Plus(x, y), 0), a3, True),
     (Not(GE(Plus(x, y), 0)), a3, False),
-    (GE(Plus(Times(-2, x), y), 0), a3, False)
+    (GE(Plus(Times(-2, x), y), 0), a3, False),
+    (Equals(Plus(x, y), 0), a1, False),
+    (Not(Equals(Plus(x, y), 0)), a1, False),
+    (Not(Equals(Plus(x, y), 0)), a3, True),
 ]
 @pytest.mark.parametrize("expression,action,expected", achievers_combinations)
 def test_is_achiever_computation(expression, action, expected):
