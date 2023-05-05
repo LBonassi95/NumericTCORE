@@ -1,3 +1,11 @@
 # NumericTCORE
 
-Unified planning version: 0.4.2.422.dev1
+
+
+## Installation
+
+Requred libraries:
+    - unified-planning version: 0.5.0.179.dev1
+    - click
+    - sympy
+

@@ -1,0 +1,29 @@
+
+(define (problem instance_4)
+  (:domain fn-counters)
+  (:objects
+    c0 c1 c2 c3 - counter
+  )
+
+  (:init
+    (= (max_int) 8)
+	(= (value c0) 0)
+	(= (value c1) 0)
+	(= (value c2) 0)
+	(= (value c3) 0)
+  )
+
+  (:goal (and 
+    (<= (+ (value c0) 1) (value c1))
+	(<= (+ (value c1) 1) (value c2))
+	(<= (+ (value c2) 1) (value c3))
+  ))
+
+  
+
+
+(:constraints (and (sometime-before (> (value c1) 0) (= (value c0) (max_int)))
+(sometime-before (> (value c2) 0) (= (value c0) (max_int)))
+(sometime-before (> (value c3) 0) (= (value c0) (max_int)))))
+
+)
