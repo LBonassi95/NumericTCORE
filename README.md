@@ -35,13 +35,13 @@ python ./bin/ntcore.py DOMAIN PROBLEM OUTPUT_PATH
 
 - `DOMAIN` is the path to the pddl domain file.
 - `PROBLEM` is the path to the pddl problem file.
-- `OUTPUT_PATH` is the path to the folder (which must exist) that will contain the compiled domain and problem files.
+- `OUTPUT` is the path to the folder (which must exist) that will contain the compiled domain and problem files.
 
 To switch between the three variants of Numeric Tcore, use one of the following commands:
 ```
-python ./bin/metcore.py DOMAIN PROBLEM OUTPUT_PATH --naive_mode
-python ./bin/metcore.py DOMAIN PROBLEM OUTPUT_PATH --regression_mode
-python ./bin/metcore.py DOMAIN PROBLEM OUTPUT_PATH --delta_mode
+python ./bin/metcore.py DOMAIN PROBLEM OUTPUT --naive_mode
+python ./bin/metcore.py DOMAIN PROBLEM OUTPUT --regression_mode
+python ./bin/metcore.py DOMAIN PROBLEM OUTPUT --delta_mode
 ```
 
 As the name suggest, --naive_mode runs ntcore^N, --regression_mode runs ntcore^R and --delta_mode runs ntcore^\Delta.
