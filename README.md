@@ -45,7 +45,7 @@ python ./bin/metcore.py DOMAIN PROBLEM OUTPUT --delta_mode
 ```
 
 As the name suggest, --naive_mode runs ntcore^N, --regression_mode runs ntcore^R and --delta_mode runs ntcore^\Delta.
-The default strategy is `--regression_mode`. For more infos, run ```python ./bin/ntcore.py --help```
+The default strategy is `--regression_mode`. For more informations, run ```python ./bin/ntcore.py --help```
 
 # Example
 
