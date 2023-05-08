@@ -21,12 +21,7 @@ pip install unified_planning==0.5.0.179.dev1
 pip install click sympy
 ```
 
-2. Switch to the "NumericTCORE" directory
-```
-cd PATH_TO_NumericTCORE
-```
-
-3. Once inside, install the numeric_tcore library with
+2. From the "NumericTCORE" directory, install the package with
 ```
 pip install .
 ```
