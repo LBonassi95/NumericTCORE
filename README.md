@@ -28,7 +28,7 @@ pip install .
 
 ## Running the compilation
 
-If installed correctly, Numeric Tcore can be used by launching "./bin/ntcore.py". 
+If installed correctly, Numeric Tcore can be used by launching "./bin/ntcore.py" with:
 ```
 python ./bin/ntcore.py DOMAIN PROBLEM OUTPUT_PATH
 ```
