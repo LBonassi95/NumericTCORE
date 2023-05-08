@@ -8,38 +8,55 @@
 
 ## Installation
 
-Metric Tcore uses the following external libraries:
+Numeric Tcore uses the following external libraries:
 - unified-planning version 0.5.0.179.dev1
 - click
 - sympy
 
 Use the following commands to install Numeric Tcore. We suggest starting with a fresh python environment (we tested with python 3.10).
 
-Install dependencies
+1. Install dependencies
 ```
 pip install unified_planning==0.5.0.179.dev1
 pip install click sympy
 ```
-Switch to the "NumericTCORE" directory
+
+2. Switch to the "NumericTCORE" directory
 ```
 cd PATH_TO_NumericTCORE
 ```
-Once inside, install the numeric_tcore library with
+
+3. Once inside, install the numeric_tcore library with
 ```
 pip install .
 ```
 
 ## Running the compilation
 
-If installed correctly, Numeric Tcore can be used by launching "./bin/metcore.py". 
+If installed correctly, Numeric Tcore can be used by launching "./bin/ntcore.py". 
 ```
-python ./bin/metcore.py DOMAIN PROBLEM OUTPUT_PATH
+python ./bin/ntcore.py DOMAIN PROBLEM OUTPUT_PATH
 ```
-To switch between the three variants of Numeric Tcore us one of the following commands:
+
+- `DOMAIN` is the path to the pddl domain file.
+- `PROBLEM` is the path to the pddl problem file.
+- `OUTPUT_PATH` is the path to the folder (which must exist) that will contain the compiled domain problem files.
+
+To switch between the three variants of Numeric Tcore, use one of the following commands:
 ```
 python ./bin/metcore.py DOMAIN PROBLEM OUTPUT_PATH --naive_mode
 python ./bin/metcore.py DOMAIN PROBLEM OUTPUT_PATH --regression_mode
 python ./bin/metcore.py DOMAIN PROBLEM OUTPUT_PATH --delta_mode
 ```
 
-As the name suggest, --naive_mode runs metcore^N, --regression_mode runs metcore^R and --delta_mode runs metcore^\Delta.
+As the name suggest, --naive_mode runs ntcore^N, --regression_mode runs ntcore^R and --delta_mode runs ntcore^\Delta.
+The default strategy is `--regression_mode`.
+
+# Example
+
+While inside the NumericTCORE folder, to compile the first instance of counters with ntcore^\Delta you can run:
+
+```python ./bin/ntcore.py benchmark/fn-counters/domain.pddl benchmark/fn-counters/instance_2.pddl . --delta_mode```
+
+
+
