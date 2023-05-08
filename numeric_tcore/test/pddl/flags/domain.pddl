@@ -1,5 +1,3 @@
-; Author: Luigi Bonassi (l.bonassi005@unibs.it)
-
 (define (domain flag-domain)
     ;(:requirements :typing :negative-preconditions :fluents)
     (:types agent flag)
