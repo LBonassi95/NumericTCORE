@@ -28,7 +28,7 @@ pip install .
 
 ## Running the compilation
 
-If installed correctly, Numeric Tcore can be used by launching "./bin/ntcore.py" with:
+The main entrypoint of Numeric Tcore is "./bin/ntcore.py". Basic usage:
 ```
 python ./bin/ntcore.py DOMAIN PROBLEM OUTPUT_PATH
 ```
@@ -45,7 +45,7 @@ python ./bin/metcore.py DOMAIN PROBLEM OUTPUT_PATH --delta_mode
 ```
 
 As the name suggest, --naive_mode runs ntcore^N, --regression_mode runs ntcore^R and --delta_mode runs ntcore^\Delta.
-The default strategy is `--regression_mode`.
+The default strategy is `--regression_mode`. For more infos, run ```python ./bin/ntcore.py --help```
 
 # Example
 
