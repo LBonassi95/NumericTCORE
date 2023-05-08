@@ -35,7 +35,7 @@ python ./bin/ntcore.py DOMAIN PROBLEM OUTPUT_PATH
 
 - `DOMAIN` is the path to the pddl domain file.
 - `PROBLEM` is the path to the pddl problem file.
-- `OUTPUT_PATH` is the path to the folder (which must exist) that will contain the compiled domain problem files.
+- `OUTPUT_PATH` is the path to the folder (which must exist) that will contain the compiled domain and problem files.
 
 To switch between the three variants of Numeric Tcore, use one of the following commands:
 ```
