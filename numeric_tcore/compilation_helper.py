@@ -1,7 +1,6 @@
 from unified_planning.shortcuts import *
 from unified_planning.model.walkers import ExpressionQuantifiersRemover
-
-
+from numeric_tcore.parsing_extensions import *
 
 class Logger:
     def __init__(self):
@@ -33,3 +32,24 @@ def get_landmark_constraints(C: List[FNode]):
     for constr in C:
         if constr.is_sometime() or constr.is_sometime_after():
             yield constr
+
+
+def reformulate_quantitative_constraints(quantitative_constraints: List, time: Fluent):
+    reformulated_constraints = []
+    for constr in quantitative_constraints:
+        if isinstance(constr, Within): 
+            arg = And(constr.formula, LE(FluentExp(time), constr.t))
+            reformulated_constraints.append(Sometime(arg))
+        elif isinstance(constr, HoldAfter):
+            arg1 = Equals(FluentExp(time), Plus(constr.t, 1))
+            arg2 = constr.formula
+            reformulated_constraints.append(SometimeAfter(arg1, arg2))
+            arg = Or(Not(LE(FluentExp(time), constr.t)), constr.formula)
+            reformulated_constraints.append(AtEnd(arg))
+        elif isinstance(constr, HoldDuring):
+            arg = Or(Not(And(GE(FluentExp(time), constr.u1), LT(FluentExp(time), constr.u2))), constr.formula)
+            reformulated_constraints.append(Always(arg))
+            arg = Or(Not(LE(FluentExp(time), constr.u1)), constr.formula)
+            reformulated_constraints.append(AtEnd(arg))
+             
+    return reformulated_constraints

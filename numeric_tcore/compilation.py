@@ -36,6 +36,7 @@ from typing import List, Dict, Tuple
 from numeric_tcore.numeric_regression import regression
 from numeric_tcore.compilation_helper import *
 from numeric_tcore.achievers_helper import *
+from numeric_tcore.parsing_extensions import PDDL3QuantitativeProblem, Within
 
 NUM = "num"
 CONSTRAINTS = "constraints"
@@ -123,6 +124,11 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
 
         logger = Logger()
 
+        quantitative_constraints = []
+        if isinstance(problem, PDDL3QuantitativeProblem):
+            quantitative_constraints = problem.quantitative_constraints
+            problem = problem.problem
+
         assert isinstance(problem, Problem)
         env = problem.env
         assert isinstance(env, Environment)
@@ -139,18 +145,44 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         constraints = build_constraint_list(
             expression_quantifier_remover, self._problem
         )
+        if isinstance(constraints, tuple):
+            constraints = list(constraints)
         # create a list that contains trajectory_constraints
         # trajectory_constraints can contain quantifiers that need to be removed
-        if len(constraints) == 1 and constraints[0] == True:
+        if len(constraints) == 1 and (constraints[0] == True or constraints[0] == TRUE()):
+            constraints = []
+
+        if len(constraints) == 0 and len(quantitative_constraints) == 0:
             raise Exception("No trajectory constraints to remove")
+        
+        # MANAGE THE TIME FLUENT #
+        self.time_fluent = Fluent("Time", IntType())
+        self._problem.add_fluent(self.time_fluent)
+        self._problem.set_initial_value(self.time_fluent, 0)
+        ##########################
+
+        at_end_constraints = []
+        if len(quantitative_constraints) > 0:
+            always_within = [c for c in quantitative_constraints if isinstance(c, AlwaysWithin)]
+            constraints += reformulate_quantitative_constraints(quantitative_constraints, self.time_fluent)
+            constraints = [c for c in constraints if not isinstance(c, AtEnd)]
+            at_end_constraints = [c for c in constraints if isinstance(c, AtEnd)]
+
         var2constraints_dict = self._build_var2constraints_dict(env, constraints)
         state_evaluator = StateEvaluator(self._problem)
 
         actions_prime: List["up.model.effect.Effect"] = list()
 
+        ############# ADDITIONAL VARIABLES CREATION #############
         initial_state_prime, f_prime = self._get_monitoring_atoms(state_evaluator, constraints, UPCOWState(initial_state))
+        initial_mark_values, f_prime_always_within = self._get_monitoring_atoms_always_within(state_evaluator, always_within, UPCOWState(initial_state))
+        #########################################################
 
-        goal_prime = And([self._monitoring_atom_dict[c] for c in get_landmark_constraints(constraints)])
+        ############# NEW GOAL CREATION #############
+        goal_prime = And([self._monitoring_atom_dict[c] for c in get_landmark_constraints(constraints)] + 
+                         [ae.formula for ae in at_end_constraints] + 
+                         [Equals(self._monitoring_atom_dict[c], -1) for c in always_within])
+        #############################################
 
         ############# BOOKKEEPING #############
         trace_back_map: Dict[Action, Tuple[Action, List[FNode]]] = {}
@@ -161,6 +193,8 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         for a in actions:
             map_value = map_grounded_action[a]
             assert isinstance(a, InstantaneousAction)
+
+            a.add_increase_effect(self.time_fluent, 1)
 
             if self.achiever_computation_strategy != NAIVE:
                 relevant_constraints = self._get_relevant_constraints(a, var2constraints_dict)
@@ -173,6 +207,7 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
                 relevant_constraints = constraints
                 
             new_P, new_E = self._get_preconditions_and_effects(relevant_constraints, a, env)
+            new_P, new_E = self._get_preconditions_and_effects_always_within(always_within, a, new_P, new_E)
             
             logger.new_preconditions += len(new_P)
             logger.new_effects += len(new_E)
@@ -192,15 +227,24 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         self._problem.clear_goals()
         self._problem.add_goal(new_goal)
         self._problem.clear_trajectory_constraints()
+        
         for fluent in f_prime:
             self._problem.add_fluent(fluent)
+
+        for fluent in f_prime_always_within:
+            self._problem.add_fluent(fluent)
+        
         self._problem.clear_actions()
         for action in actions_prime:
             self._problem.add_action(action)
+
         for init_val in initial_state_prime:
             self._problem.set_initial_value(
                 Fluent(f"{init_val}", BoolType()), True
             )
+        for mark, val in initial_mark_values.items():
+            self._problem.set_initial_value(mark, val)
+
         return CompilerResult(
             self._problem, partial(lift_action_instance, map=trace_back_map), self.name
         ), logger
@@ -231,6 +275,28 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
                 )
             
         return new_P, new_E
+
+    def _get_preconditions_and_effects_always_within(self, always_within, a, new_P, new_E):
+        for c in always_within:
+            assert isinstance(c, AlwaysWithin)
+            self._compile_always_within(a, c, new_P, new_E)
+        return new_P, new_E
+
+    def _compile_always_within(self, a: InstantaneousAction, c: AlwaysWithin, new_P: list, new_E: list):
+        t = c.t
+        phi = c.formula1
+        psi = c.formula2
+        mark = self._monitoring_atom_dict[c]
+        r_phi_and_not_psi_and_mark = And(regression(And([phi, Not(psi)]), a).simplify(), 
+                                         Equals(mark, -1)
+                                         )
+        r_psi_a = regression(psi, a).simplify()
+        pre = Or(Equals(mark, -1), LE(Minus(FluentExp(self.time_fluent), mark), t))
+        self._add_numeric_cond_eff(new_E, r_phi_and_not_psi_and_mark, mark, FluentExp(self.time_fluent))
+        self._add_numeric_cond_eff(new_E, r_psi_a, mark, Int(-1))
+        new_P.append(pre)
+
+
 
     def _compile_sa(self, a: InstantaneousAction, c: FNode, new_E: list):
         phi = c.args[0]
@@ -284,17 +350,19 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
                     up.model.Effect(
                         condition=cond,
                         fluent=eff.args[0],
-                        value=FALSE(),
-                    )
-                )
+                        value=FALSE(),))
             else:
                 new_E.append(
                     up.model.Effect(
                         condition=cond,
                         fluent=eff,
-                        value=TRUE(),
-                    )
-                )
+                        value=TRUE(),))
+    
+    def _add_numeric_cond_eff(self, new_E: list, cond: FNode, fluent: FNode, value: FNode):
+        new_E.append(up.model.Effect(
+                        condition=cond,
+                        fluent=fluent,
+                        value=value))
 
     def _get_relevant_constraints(self, a: InstantaneousAction, var2constraints_dict: Dict) -> list[FNode]:
         '''
@@ -358,6 +426,31 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
                     initial_state_prime.append(monitoring_atom)
                 monitoring_atoms_counter += 1
         return initial_state_prime, monitoring_atoms
+
+    def _get_monitoring_atoms_always_within(self, state_evaluator: StateEvaluator, always_within: list[AlwaysWithin], I: ROState):
+        monitoring_atoms = []
+        always_within_counter = 0
+        initial_marks_value = {}
+        for aw in always_within:
+            phi_init_value = state_evaluator.evaluate(aw.formula1, I)
+            psi_init_value = state_evaluator.evaluate(aw.formula2, I)
+            
+            start_with_mark = phi_init_value.is_true() and not psi_init_value.is_true()
+            fluent = Fluent(f"mark{SEPARATOR}{always_within_counter}", IntType())
+            monitoring_atoms.append(fluent)
+            monitoring_atom = FluentExp(fluent)
+            self._monitoring_atom_dict[aw] = monitoring_atom
+            if start_with_mark:
+                initial_marks_value[fluent] = 0
+            else:
+                initial_marks_value[fluent] = -1
+            
+            if initial_marks_value[fluent] >= int(str(aw.t)):
+                raise UPProblemDefinitionError(
+                    "PROBLEM NOT SOLVABLE: an always-within constraint is violated in the initial state")
+
+            always_within_counter += 1
+        return initial_marks_value, monitoring_atoms
 
     def _build_var2constraints_dict(self, env: Environment, C: list[FNode]):
         '''

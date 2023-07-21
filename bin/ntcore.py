@@ -5,6 +5,7 @@ from numeric_tcore.compilation import NumericCompiler
 import click
 import os
 from numeric_tcore.achievers_helper import *
+from numeric_tcore.parsing_extensions import *
 
 @click.command()
 @click.argument('domain')
@@ -15,8 +16,7 @@ from numeric_tcore.achievers_helper import *
 @click.option('--naive_mode', 'achiever_strategy', flag_value=NAIVE)
 @click.option('--verbose', is_flag=True, default=False)
 def main(domain, problem, output, achiever_strategy, verbose):
-    reader = PDDLReader()
-    problem = reader.parse_problem(domain, problem)
+    problem = parse_pddl3(domain, problem)
 
     compiler = NumericCompiler(achiever_computation_strategy=achiever_strategy) 
     #tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
