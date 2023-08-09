@@ -26,6 +26,7 @@ from unified_planning.model.walkers import FreeVarsExtractor
 from unified_planning.model import Problem, ProblemKind
 from unified_planning.model.operators import OperatorKind
 from unified_planning.model.walkers.state_evaluator import StateEvaluator
+from unified_planning.model.state import State, UPState
 from unified_planning.environment import Environment
 from unified_planning.shortcuts import *
 from functools import partial
@@ -58,7 +59,7 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
     """
 
     def __init__(self, achiever_computation_strategy = REGRESSION):
-        engines.Engine.__init__(self)
+        engines.engine.Engine.__init__(self)
         CompilerMixin.__init__(self, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
         self._monitoring_atom_dict: Dict[
             "up.model.fnode.FNode", "up.model.fnode.FNode"
@@ -74,6 +75,18 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
     def supports(problem_kind):
         #return problem_kind <= NumericCompiler.supported_kind()
         return True
+    
+    @staticmethod
+    def resulting_problem_kind(
+        problem_kind: ProblemKind, compilation_kind: Optional[CompilationKind] = None
+    ) -> ProblemKind:
+        new_kind = ProblemKind(problem_kind.features)
+        if new_kind.has_trajectory_constraints() or new_kind.has_state_invariants():
+            new_kind.unset_constraints_kind("TRAJECTORY_CONSTRAINTS")
+            new_kind.unset_constraints_kind("STATE_INVARIANTS")
+            new_kind.set_conditions_kind("NEGATIVE_CONDITIONS")
+            new_kind.set_conditions_kind("DISJUNCTIVE_CONDITIONS")
+        return new_kind
 
     @staticmethod
     def supports_compilation(compilation_kind: CompilationKind) -> bool:
@@ -130,9 +143,9 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
             problem = problem.problem
 
         assert isinstance(problem, Problem)
-        env = problem.env
+        env = problem.environment
         assert isinstance(env, Environment)
-        expression_quantifier_remover = ExpressionQuantifiersRemover(problem.env)
+        expression_quantifier_remover = ExpressionQuantifiersRemover(env)
         self._grounding_result = Grounder().compile(
             problem, CompilationKind.GROUNDING
         )
@@ -154,19 +167,27 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
 
         if len(constraints) == 0 and len(quantitative_constraints) == 0:
             raise Exception("No trajectory constraints to remove")
+
+        # REGISTER CONSTRAINTS IN LOGGER #
+        logger.qualitative_constraints = [c for c in constraints]
         
         # MANAGE THE TIME FLUENT #
-        self.time_fluent = Fluent("Time", IntType())
+        self.time_fluent = Fluent("time", RealType())
         self._problem.add_fluent(self.time_fluent)
         self._problem.set_initial_value(self.time_fluent, 0)
         ##########################
 
         at_end_constraints = []
+        always_within = []
         if len(quantitative_constraints) > 0:
+            quantitative_constraints = ground_quantitative_constraints(expression_quantifier_remover, quantitative_constraints, self._problem)
+            # REGISTER CONSTRAINTS IN LOGGER #
+            logger.quantitative_constraints = [c for c in quantitative_constraints]
             always_within = [c for c in quantitative_constraints if isinstance(c, AlwaysWithin)]
             constraints += reformulate_quantitative_constraints(quantitative_constraints, self.time_fluent)
-            constraints = [c for c in constraints if not isinstance(c, AtEnd)]
             at_end_constraints = [c for c in constraints if isinstance(c, AtEnd)]
+            constraints = [c for c in constraints if not isinstance(c, AtEnd)]
+        
 
         var2constraints_dict = self._build_var2constraints_dict(env, constraints)
         state_evaluator = StateEvaluator(self._problem)
@@ -174,8 +195,8 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         actions_prime: List["up.model.effect.Effect"] = list()
 
         ############# ADDITIONAL VARIABLES CREATION #############
-        initial_state_prime, f_prime = self._get_monitoring_atoms(state_evaluator, constraints, UPCOWState(initial_state))
-        initial_mark_values, f_prime_always_within = self._get_monitoring_atoms_always_within(state_evaluator, always_within, UPCOWState(initial_state))
+        initial_state_prime, f_prime = self._get_monitoring_atoms(state_evaluator, constraints, UPState(initial_state))
+        initial_mark_values, f_prime_always_within = self._get_monitoring_atoms_always_within(state_evaluator, always_within, UPState(initial_state))
         #########################################################
 
         ############# NEW GOAL CREATION #############
@@ -287,13 +308,19 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         phi = c.formula1
         psi = c.formula2
         mark = self._monitoring_atom_dict[c]
-        r_phi_and_not_psi_and_mark = And(regression(And([phi, Not(psi)]), a).simplify(), 
+        
+        pre = Or(Equals(mark, -1), LT(Minus(FluentExp(self.time_fluent), mark), t))
+
+        if self.achiever_helper.isAchiever(a, And([phi, Not(psi)])):
+            r_phi_and_not_psi_and_mark = And(regression(And([phi, Not(psi)]), a).simplify(), 
                                          Equals(mark, -1)
                                          )
-        r_psi_a = regression(psi, a).simplify()
-        pre = Or(Equals(mark, -1), LE(Minus(FluentExp(self.time_fluent), mark), t))
-        self._add_numeric_cond_eff(new_E, r_phi_and_not_psi_and_mark, mark, FluentExp(self.time_fluent))
-        self._add_numeric_cond_eff(new_E, r_psi_a, mark, Int(-1))
+            self._add_numeric_cond_eff(new_E, r_phi_and_not_psi_and_mark, mark, Plus(FluentExp(self.time_fluent), 1))
+        
+        if self.achiever_helper.isAchiever(a, psi):
+            r_psi_a = regression(psi, a).simplify()
+            self._add_numeric_cond_eff(new_E, r_psi_a, mark, Int(-1))
+
         new_P.append(pre)
 
 
@@ -385,7 +412,7 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
             raise UPProblemDefinitionError(
                 "PROBLEM NOT SOLVABLE: an {} is violated in the initial state".format(constraint))
 
-    def _evaluate_constraint(self, state_evaluator: StateEvaluator, constr: FNode, initial_state: ROState):
+    def _evaluate_constraint(self, state_evaluator: StateEvaluator, constr: FNode, initial_state: UPState):
         phi_init_value = state_evaluator.evaluate(constr.args[0], initial_state)
         if constr.is_always():
             self._check_itc_violated_in_init(phi_init_value.is_false(), "always")
@@ -407,7 +434,7 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
                         .format(str(constr))
                     )
 
-    def _get_monitoring_atoms(self, state_evaluator: StateEvaluator, C: list[FNode], I: ROState):
+    def _get_monitoring_atoms(self, state_evaluator: StateEvaluator, C: list[FNode], I: UPState):
         monitoring_atoms = []
         monitoring_atoms_counter = 0
         initial_state_prime = []
@@ -427,7 +454,7 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
                 monitoring_atoms_counter += 1
         return initial_state_prime, monitoring_atoms
 
-    def _get_monitoring_atoms_always_within(self, state_evaluator: StateEvaluator, always_within: list[AlwaysWithin], I: ROState):
+    def _get_monitoring_atoms_always_within(self, state_evaluator: StateEvaluator, always_within: list[AlwaysWithin], I: UPState):
         monitoring_atoms = []
         always_within_counter = 0
         initial_marks_value = {}

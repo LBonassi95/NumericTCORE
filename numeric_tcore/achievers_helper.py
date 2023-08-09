@@ -3,6 +3,7 @@ from unified_planning.model.fnode import FNode
 from unified_planning.shortcuts import *
 from unified_planning.model.walkers import LinearChecker, FreeVarsExtractor, Substituter, Simplifier, Nnf
 from sympy.parsing.sympy_parser import parse_expr, standard_transformations
+from unified_planning.environment import get_environment
 
 
 NAIVE = "naive"
@@ -16,14 +17,14 @@ class AchieverHelper:
     def __init__(self, strategy, problem = None) -> None:
         assert strategy in STRATEGIES
         self.strategy = strategy
-        self.substituter = Substituter(get_env())
+        self.substituter = Substituter(get_environment())
         self.extractor = FreeVarsExtractor()
         self.linear_checker = LinearChecker()
-        self.nnf_transformer = Nnf(get_env())
+        self.nnf_transformer = Nnf(get_environment())
         self.sympy_cache = {}
         self.problem = problem
         if self.problem is not None:
-            self.simplifier = Simplifier(get_env(), self.problem)
+            self.simplifier = Simplifier(get_environment(), self.problem)
 
 
     #@profile

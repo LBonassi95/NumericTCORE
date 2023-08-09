@@ -19,7 +19,7 @@
 
 (:action drive
  :parameters (?t - truck ?from ?to - place)
- :precondition (and (loc ?t ?from))
+ :precondition (and (loc ?t ?from) (> (drive-cost ?from ?to) 0))
  :effect (and (not (loc ?t ?from)) (loc ?t ?to)
 	      (increase (total-cost) (drive-cost ?from ?to))))
 

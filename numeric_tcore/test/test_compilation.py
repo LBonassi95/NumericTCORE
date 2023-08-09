@@ -67,6 +67,26 @@ def test_compilation_sailing_3():
     compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
     new_problem = compilation_result.problem
 
+def test_compilation_sailing_logger():
+    reader = PDDLReader()
+    domain_path = pkg_resources.resource_filename(__name__, 'pddl/sailing/domain.pddl')
+    problem_path = pkg_resources.resource_filename(__name__, 'pddl/sailing/instance_3_8_1229_fo.pddl')
+    problem = reader.parse_problem(domain_path, problem_path)
+    compiler = NumericCompiler() 
+    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
+    compilation_result, logger = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
+
+def test_compilation_zeno_logger():
+    reader = PDDLReader()
+    domain_path = pkg_resources.resource_filename(__name__, 'pddl/zeno/zenonumeric.pddl')
+    problem_path = pkg_resources.resource_filename(__name__, 'pddl/zeno/pfile3')
+    problem = reader.parse_problem(domain_path, problem_path)
+    compiler = NumericCompiler() 
+    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
+    compilation_result, logger = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
+
 def test_compilation_farm():
     reader = PDDLReader()
     domain_path = pkg_resources.resource_filename(__name__, 'pddl/farm/domain.pddl')
@@ -123,6 +143,18 @@ def test_compilation_counters():
     new_problem = compilation_result.problem
 
 
+def test_compilation_tpp():
+    reader = PDDLReader()
+    domain_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/domain.pddl')
+    problem_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/p01.pddl')
+    problem = reader.parse_problem(domain_path, problem_path)
+    assert isinstance(problem, Problem)
+    compiler = NumericCompiler() 
+    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
+    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
+
+
 def test_compilation_rovers():
     reader = PDDLReader()
     domain_path = pkg_resources.resource_filename(__name__, 'pddl/rovers/domain.pddl')
@@ -132,3 +164,6 @@ def test_compilation_rovers():
     tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
     compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
     new_problem = compilation_result.problem
+
+if __name__ == "__main__":
+    pytest.main()

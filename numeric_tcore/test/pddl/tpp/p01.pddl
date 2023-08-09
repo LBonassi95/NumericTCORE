@@ -7,6 +7,13 @@
 	truck0 - truck
 	goods0 - goods)
 (:init
+	(= (drive-cost market1 market1) 0)
+	(= (drive-cost market2 market2) 0)
+	(= (drive-cost market3 market3) 0)
+	(= (drive-cost market4 market4) 0)
+	(= (drive-cost market5 market5) 0)
+	(= (drive-cost depot0 depot0) 0)
+	
 	(= (price goods0 market1) 17)
 	(= (on-sale goods0 market1) 4)
 	(= (price goods0 market2) 49)
@@ -53,6 +60,7 @@
 	(= (total-cost) 0))
 
 (:goal (and
+	(>= (bought goods0) (request goods0))
 	(loc truck0 depot0)))
 
 (:constraints (and

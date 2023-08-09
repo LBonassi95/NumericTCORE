@@ -22,5 +22,37 @@ def test_compilation():
     compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
     new_problem = compilation_result.problem
 
+
+def test_compilation_tpp_delta_quantitative():
+    domain_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/domain.pddl')
+    problem_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/p02.pddl')
+    problem = parse_pddl3(domain_path, problem_path)
+    compiler = NumericCompiler() 
+    compiler.achiever_computation_strategy = DELTA
+    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
+    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
+
+def test_compilation_tpp_delta_quantitative_first_order():
+    domain_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/domain.pddl')
+    problem_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/p03.pddl')
+    problem = parse_pddl3(domain_path, problem_path)
+    compiler = NumericCompiler() 
+    compiler.achiever_computation_strategy = DELTA
+    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
+    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
+
+def test_compilation_tpp_delta_quantitative_first_order_logger():
+    domain_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/domain.pddl')
+    problem_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/p03.pddl')
+    problem = parse_pddl3(domain_path, problem_path)
+    compiler = NumericCompiler() 
+    compiler.achiever_computation_strategy = DELTA
+    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
+    compilation_result, logger = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
+
+
 if __name__ == '__main__':
-    test_compilation()
+    test_compilation_tpp_delta_quantitative()

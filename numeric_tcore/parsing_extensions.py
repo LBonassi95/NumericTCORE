@@ -5,7 +5,7 @@ from unified_planning.model import ExpressionManager
 from unified_planning.model.walkers import TypeChecker
 from unified_planning.model.operators import OperatorKind
 from unified_planning.io.pddl_reader import PDDLReader
-
+from unified_planning.environment import get_environment
 
 #WITHIN = "within"
 
@@ -67,33 +67,33 @@ class ParserExtension:
         self.constraints = []
         
     def parse_atend(self, phi: BoolExpression) -> "up.model.fnode.FNode":
-        env = get_env()
+        env = get_environment()
         em = env.expression_manager
         self.constraints.append(AtEnd(phi))
 
         return em.create_node(node_type=OperatorKind.SOMETIME, args=tuple([TRUE()]))
     def parse_within(self, time: ConstantExpression, phi: BoolExpression) -> "up.model.fnode.FNode":
-        env = get_env()
+        env = get_environment()
         em = env.expression_manager
         self.constraints.append(Within(time, phi))
         return em.create_node(node_type=OperatorKind.SOMETIME, args=tuple([TRUE()]))
     
 
     def parse_holdafter(self, time: ConstantExpression, phi: BoolExpression) -> "up.model.fnode.FNode":
-        env = get_env()
+        env = get_environment()
         em = env.expression_manager
         self.constraints.append(HoldAfter(time, phi))
         return em.create_node(node_type=OperatorKind.SOMETIME, args=tuple([TRUE()]))
 
 
     def parse_holdduring(self, u1: ConstantExpression, u2: ConstantExpression, phi: BoolExpression) -> "up.model.fnode.FNode":
-        env = get_env()
+        env = get_environment()
         em = env.expression_manager
         self.constraints.append(HoldDuring(u1, u2, phi))
         return em.create_node(node_type=OperatorKind.SOMETIME, args=tuple([TRUE()]))
     
     def parse_alwayswithin(self, t: ConstantExpression, phi: BoolExpression, psi: BoolExpression) -> "up.model.fnode.FNode":
-        env = get_env()
+        env = get_environment()
         em = env.expression_manager
         self.constraints.append(AlwaysWithin(t, phi, psi))
         return em.create_node(node_type=OperatorKind.SOMETIME, args=tuple([TRUE()]))
@@ -120,3 +120,13 @@ class PDDL3QuantitativeProblem(AbstractProblem):
 
     def kind(self) -> "up.model.problem_kind.ProblemKind":
         return super().kind()
+
+    def has_name(self, name: str) -> bool:
+        return super().has_name(name)
+    
+    def clone(self):
+        return super().clone()
+    
+    def normalize_plan(self, plan: "up.plans.Plan") -> "up.plans.Plan":
+        return super().normalize_plan(plan)
+    

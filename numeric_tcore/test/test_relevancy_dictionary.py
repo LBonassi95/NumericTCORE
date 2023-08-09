@@ -27,7 +27,7 @@ def test_relevancy_dict():
     reader = PDDLReader()
     problem = reader.parse_problem(domain_path, problem_path)
     compiler = NumericCompiler()
-    relevancy_dict = compiler._build_var2constraints_dict(problem.env, constraints)
+    relevancy_dict = compiler._build_var2constraints_dict(problem.environment, constraints)
     assert len(relevancy_dict[xpos(a1)]) == 2
     assert len(relevancy_dict[ypos(a1)]) == 4
     assert len(relevancy_dict[planted(f1)]) == 3
