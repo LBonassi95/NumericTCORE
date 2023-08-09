@@ -1,4 +1,4 @@
-from numeric_tcore.numeric_regression import regression
+from numeric_tcore.numeric_regression import regression, gamma
 from unified_planning.model.fnode import FNode
 from unified_planning.shortcuts import *
 from unified_planning.model.walkers import LinearChecker, FreeVarsExtractor, Substituter, Simplifier, Nnf
@@ -34,32 +34,51 @@ class AchieverHelper:
 
         elif self.strategy == DELTA:
             phi = self.nnf_transformer.get_nnf_expression(phi)
-            numeric_conditions = self._get_numeric_conditions(phi)
+            conditions = self._get_conditions(phi)
 
-            for condition in numeric_conditions:
-                if self.deltaAchieverStrategy(condition, action):
-                    return True
+            for condition in conditions:
+                if condition.is_fluent_exp() or (condition.is_not() and condition.args[0].is_fluent_exp()):
+                    if self.deltaAchieverBoolean(condition, action):
+                        return True
+                else:
+                    if self.deltaAchieverStrategy(condition, action):
+                        return True
 
             return False
     
-    def _get_numeric_conditions(self, phi: FNode):
+    def _get_conditions(self, phi: FNode):
         if phi.is_and() or phi.is_or():
             conditions = []
             for c in phi.args:
-                conditions += self._get_numeric_conditions(c)
+                conditions += self._get_conditions(c)
             return conditions
         elif phi.is_not():
-             if not (phi.args[0].is_le() or phi.args[0].is_lt() or phi.args[0].is_equals()):
+             if not (phi.args[0].is_le() or phi.args[0].is_lt() or phi.args[0].is_equals() or phi.args[0].is_fluent_exp()):
                 raise Exception(NNF_ERROR.format(phi))
              else:
                  return [phi]
         else:
-            if phi.is_le() or phi.is_lt() or phi.is_equals():
-                return [phi]
-            elif phi.is_fluent_exp():
-                raise Exception("The achiever strategy for boolean literals has not been implemented yet")
-            else:
-                raise Exception("Unrecognized formula '{}'".format(phi))
+            assert phi.is_le() or phi.is_lt() or phi.is_equals() or phi.is_fluent_exp()
+            return [phi]
+
+    def _get_negated_condition(self, expression: FNode):
+        expr = expression.args[0]
+        if expr.is_le():
+            return GT(expr.args[0], expr.args[1])
+        elif expr.is_lt():
+            return GE(expr.args[0], expr.args[1])
+        elif expr.is_equals():
+            return expr
+        else:
+            raise Exception(NNF_ERROR.format(expression))
+        
+
+    def deltaAchieverBoolean(self, expression: FNode, action):
+        res = gamma(expression, action)
+        if res == False:
+            return False
+        else:
+            return True
 
     def _get_negated_condition(self, expression: FNode):
         expr = expression.args[0]
