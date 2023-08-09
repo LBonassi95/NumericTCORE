@@ -1,0 +1,12 @@
+{
+  "defaultDomain": "domain.pddl",
+  "defaultOptions": "",
+  "cases": [
+    {
+      "problem": "instance_3_10_1229.pddl"
+    },
+    {
+      "problem": "instance_3_8_1229.pddl"
+    }
+  ]
+}
