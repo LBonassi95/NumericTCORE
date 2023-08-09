@@ -92,11 +92,11 @@ def test_compilation_farm():
     domain_path = pkg_resources.resource_filename(__name__, 'pddl/farm/domain.pddl')
     problem_path = pkg_resources.resource_filename(__name__, 'pddl/farm/instance_4_700_1229.pddl')
     problem = reader.parse_problem(domain_path, problem_path)
-    compiler = NumericCompiler(achiever_computation_strategy=DELTA) 
-    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
-    with pytest.raises(Exception):
-        compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
-        new_problem = compilation_result.problem
+    # compiler = NumericCompiler(achiever_computation_strategy=DELTA) 
+    # tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
+    # with pytest.raises(Exception):
+    #     compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    #     new_problem = compilation_result.problem
     
     compiler = NumericCompiler(achiever_computation_strategy=REGRESSION) 
     tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING

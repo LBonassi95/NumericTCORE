@@ -186,3 +186,47 @@ def test_achiever_computation_with_static_variables():
     assert delta_achiever.isAchiever(fly_slow_action, formula) == False
     for a in ground_problem.actions:
         delta_achiever.isAchiever(a, formula)
+
+
+Boat = UserType("Boat")
+
+b1 = Object("b1", Boat)
+b2 = Object("b2", Boat)
+
+a = Fluent("a", BoolType())
+b = Fluent("b", BoolType())
+c = Fluent("c", BoolType())
+
+a1 = InstantaneousAction("a1")
+a1.add_effect(a, True, Or(b, c))
+
+a2 = InstantaneousAction("a2")
+a2.add_effect(b, False, Or(a, c))
+
+a3 = InstantaneousAction("a3")
+a3.add_effect(a, True, Or(b, c))
+a3.add_effect(b, False, Or(a, c))
+a3.add_effect(c, True)
+
+
+regression_achiever = AchieverHelper(REGRESSION)
+delta_achiever = AchieverHelper(DELTA)
+
+
+achievers_combinations = [
+    (GE(Plus(x, y), 0), a1, False),
+    (LE(Plus(x, y), 0), a3, False),
+    (And(a, b), a1, True),
+    (And(a, b), a2, False),
+    (And(a, Not(b)), a2, True),
+    (Not(c), a2, False),
+    (Not(c), a3, False),
+    (FluentExp(c), a3, True),
+    (And(GE(x, 0), c), a3, True),
+    (And(Not(c), Not(a), b), a3, False),
+    (And(Not(c), Not(a), Not(b)), a3, True),
+]
+@pytest.mark.parametrize("expression,action,expected", achievers_combinations)
+def test_is_achiever_bool_computation(expression, action, expected):
+    result = delta_achiever.isAchiever(action, expression)
+    assert result == expected
