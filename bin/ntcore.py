@@ -18,7 +18,6 @@ def main(domain, problem, output, achiever_strategy, verbose):
     problem = parse_pddl3(domain, problem)
 
     compiler = NumericCompiler(achiever_computation_strategy=achiever_strategy) 
-    #tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
     compilation_result, logger = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
     new_problem = compilation_result.problem
 
