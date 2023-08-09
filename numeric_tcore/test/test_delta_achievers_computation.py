@@ -63,16 +63,9 @@ n_cond1 = GE(x, 1)
 n_cond2 = LE(y, 2)
 n_cond3 = LE(z, 3)
 
-regression_achiever = AchieverHelper(REGRESSION)
 delta_achiever = AchieverHelper(DELTA)
 
 combinations = [
-    (a1, n_cond1, regression_achiever, False),
-    (a1, n_cond2, regression_achiever, False),
-    (a1, And(n_cond1, n_cond2), regression_achiever, False),
-    (a1, Or(n_cond1, n_cond2), regression_achiever, False),
-    (a1, And(n_cond1, n_cond3), regression_achiever, True),
-    (a1, Or(n_cond1, Not(n_cond3)), regression_achiever, True),
     (a2, n_cond1, delta_achiever, False),
 ]
 

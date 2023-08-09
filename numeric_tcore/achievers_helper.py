@@ -7,9 +7,8 @@ from unified_planning.environment import get_environment
 
 
 NAIVE = "naive"
-REGRESSION = "regression"
 DELTA = "delta"
-STRATEGIES = [NAIVE, REGRESSION, DELTA]
+STRATEGIES = [NAIVE, DELTA]
 NNF_ERROR = "Error! The formula '{}' is not in NNF"
 
 class AchieverHelper:
@@ -32,14 +31,8 @@ class AchieverHelper:
         
         if self.strategy == NAIVE:
             return True
-        
-        elif self.strategy == REGRESSION:
-            return phi != regression(phi, action)
 
         elif self.strategy == DELTA:
-
-            #if phi != regression(phi, action):
-
             phi = self.nnf_transformer.get_nnf_expression(phi)
             numeric_conditions = self._get_numeric_conditions(phi)
 
@@ -48,8 +41,6 @@ class AchieverHelper:
                     return True
 
             return False
-            # else:
-            #     return False
     
     def _get_numeric_conditions(self, phi: FNode):
         if phi.is_and() or phi.is_or():
@@ -63,8 +54,12 @@ class AchieverHelper:
              else:
                  return [phi]
         else:
-            assert phi.is_le() or phi.is_lt() or phi.is_equals()
-            return [phi]
+            if phi.is_le() or phi.is_lt() or phi.is_equals():
+                return [phi]
+            elif phi.is_fluent_exp():
+                raise Exception("The achiever strategy for boolean literals has not been implemented yet")
+            else:
+                raise Exception("Unrecognized formula '{}'".format(phi))
 
     def _get_negated_condition(self, expression: FNode):
         expr = expression.args[0]
@@ -77,11 +72,10 @@ class AchieverHelper:
         else:
             raise Exception(NNF_ERROR.format(expression))
 
-    #@profile
     def deltaAchieverStrategy(self, expression: FNode, action):
-
-        # if not self._constant_numeric_influence(action, expression):
-        #     return True
+        '''
+        Returns True if the action is a delta-achiever of the expression
+        '''
 
         assert expression.is_le() or expression.is_lt() or expression.is_not() or expression.is_equals()
 
@@ -132,6 +126,9 @@ class AchieverHelper:
 
     #@profile
     def _get_delta(self, expr: FNode, regressed_expr: FNode):
+        '''
+        This function returns the delta between the expression and the regressed expression.
+        '''
 
         if self.sympy_cache.get(expr) is not None:
             sympy_expr = self.sympy_cache[expr]

@@ -108,15 +108,15 @@ def parse_pddl3(domain_path, problem_path):
     reader._trajectory_constraints["hold-during"] = parser_extensions.parse_holdduring
     reader._trajectory_constraints["always-within"] = parser_extensions.parse_alwayswithin
     problem = reader.parse_problem(domain_path, problem_path)
-    quantitative_constrants = parser_extensions.constraints
-    return PDDL3QuantitativeProblem(problem, quantitative_constrants)
+    metric_time_constrants = parser_extensions.constraints
+    return PDDL3Problem(problem, metric_time_constrants)
 
 
-class PDDL3QuantitativeProblem(AbstractProblem):
+class PDDL3Problem(AbstractProblem):
 
-    def __init__(self, problem, quantitative_constraints) -> None:
+    def __init__(self, problem, metric_time_constraints) -> None:
         self.problem = problem
-        self.quantitative_constraints = quantitative_constraints
+        self.metric_time_constraints = metric_time_constraints
 
     def kind(self) -> "up.model.problem_kind.ProblemKind":
         return super().kind()

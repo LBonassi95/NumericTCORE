@@ -37,7 +37,7 @@ from typing import List, Dict, Tuple
 from numeric_tcore.numeric_regression import regression
 from numeric_tcore.compilation_helper import *
 from numeric_tcore.achievers_helper import *
-from numeric_tcore.parsing_extensions import PDDL3QuantitativeProblem, Within
+from numeric_tcore.parsing_extensions import PDDL3Problem, Within
 
 NUM = "num"
 CONSTRAINTS = "constraints"
@@ -58,7 +58,7 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
     This `Compiler` supports only the the `TRAJECTORY_CONSTRAINTS_REMOVING` :class:`~unified_planning.engines.CompilationKind`.
     """
 
-    def __init__(self, achiever_computation_strategy = REGRESSION):
+    def __init__(self, achiever_computation_strategy = NAIVE):
         engines.engine.Engine.__init__(self)
         CompilerMixin.__init__(self, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
         self._monitoring_atom_dict: Dict[
@@ -132,14 +132,14 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         :param problem: The instance of the `Problem` that contains the trajecotry constraints.
         :param compilation_kind: The `CompilationKind` that must be applied on the given problem;
             only `TRAJECTORY_CONSTRAINTS_REMOVING` is supported by this compiler
-        :return: The resulting `CompilerResult` data structure.
+        :return: The numeric planning problem without trajecotry constraints.
         """
 
         logger = Logger()
 
-        quantitative_constraints = []
-        if isinstance(problem, PDDL3QuantitativeProblem):
-            quantitative_constraints = problem.quantitative_constraints
+        metric_time_constraints = []
+        if isinstance(problem, PDDL3Problem):
+            metric_time_constraints = problem.metric_time_constraints
             problem = problem.problem
 
         assert isinstance(problem, Problem)
@@ -165,11 +165,11 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         if len(constraints) == 1 and (constraints[0] == True or constraints[0] == TRUE()):
             constraints = []
 
-        if len(constraints) == 0 and len(quantitative_constraints) == 0:
+        if len(constraints) == 0 and len(metric_time_constraints) == 0:
             raise Exception("No trajectory constraints to remove")
 
         # REGISTER CONSTRAINTS IN LOGGER #
-        logger.qualitative_constraints = [c for c in constraints]
+        logger.constraints = [c for c in constraints]
         
         # MANAGE THE TIME FLUENT #
         self.time_fluent = Fluent("time", RealType())
@@ -179,12 +179,13 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
 
         at_end_constraints = []
         always_within = []
-        if len(quantitative_constraints) > 0:
-            quantitative_constraints = ground_quantitative_constraints(expression_quantifier_remover, quantitative_constraints, self._problem)
-            # REGISTER CONSTRAINTS IN LOGGER #
-            logger.quantitative_constraints = [c for c in quantitative_constraints]
-            always_within = [c for c in quantitative_constraints if isinstance(c, AlwaysWithin)]
-            constraints += reformulate_quantitative_constraints(quantitative_constraints, self.time_fluent)
+        if len(metric_time_constraints) > 0:
+            metric_time_constraints = ground_metric_time_constraints(expression_quantifier_remover, metric_time_constraints, self._problem)
+            # REGISTER CONSTRAINTS IN LOGGER FOR STATISTICS #
+            logger.metric_time_constraints = [c for c in metric_time_constraints]
+            ##################################################
+            always_within = [c for c in metric_time_constraints if isinstance(c, AlwaysWithin)]
+            constraints += reformulate_metric_time_constraints(metric_time_constraints, self.time_fluent)
             at_end_constraints = [c for c in constraints if isinstance(c, AtEnd)]
             constraints = [c for c in constraints if not isinstance(c, AtEnd)]
         
@@ -226,10 +227,12 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
             else:
                 # If the achiever computation strategy is NAIVE, then all the constraints are relevant
                 relevant_constraints = constraints
-                
+            
+            # COMPUTE ADDITIONAL PRECONDITIONS AND EFFECTS #
             new_P, new_E = self._get_preconditions_and_effects(relevant_constraints, a, env)
             new_P, new_E = self._get_preconditions_and_effects_always_within(always_within, a, new_P, new_E)
             
+            # STORE THE NEW PRECONDITIONS AND EFFECTS IN LOGGER FOR STATISTICS #
             logger.new_preconditions += len(new_P)
             logger.new_effects += len(new_E)
 
@@ -271,6 +274,10 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         ), logger
     
     def _get_preconditions_and_effects(self, relevant_constraints, a, env):
+        '''
+        This method computes the new preconditions and effects of an action "a" given the relevant constraints.
+        The always within is handled separately.
+        '''
         new_P = []
         new_E = []
         for c in relevant_constraints:
@@ -298,6 +305,9 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         return new_P, new_E
 
     def _get_preconditions_and_effects_always_within(self, always_within, a, new_P, new_E):
+        '''
+        This method computes the new preconditions and effects of an action "a" given the always within constraints.
+        '''
         for c in always_within:
             assert isinstance(c, AlwaysWithin)
             self._compile_always_within(a, c, new_P, new_E)
@@ -364,7 +374,7 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
             new_P.append(Or([Not(r_phi_a), Not(seen_phi), phi]).simplify())
             self._add_cond_eff(new_E, r_phi_a, seen_phi)
             
-    #@profile
+    
     def _compile_always(self, a: InstantaneousAction, c: FNode, new_P: list):
         phi = c.args[0]
         if self.achiever_helper.isAchiever(a, Not(phi)):
@@ -413,6 +423,11 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
                 "PROBLEM NOT SOLVABLE: an {} is violated in the initial state".format(constraint))
 
     def _evaluate_constraint(self, state_evaluator: StateEvaluator, constr: FNode, initial_state: UPState):
+        '''
+        Check the initial status of the constraints.
+        Check if a constraint is violated in the initial state.
+        Returns the initial status of the monitoring atom associated to the constraint.
+        '''
         phi_init_value = state_evaluator.evaluate(constr.args[0], initial_state)
         if constr.is_always():
             self._check_itc_violated_in_init(phi_init_value.is_false(), "always")
@@ -435,6 +450,9 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
                     )
 
     def _get_monitoring_atoms(self, state_evaluator: StateEvaluator, C: list[FNode], I: UPState):
+        '''
+        Build the monitoring atoms for the constraints in C.
+        '''
         monitoring_atoms = []
         monitoring_atoms_counter = 0
         initial_state_prime = []
@@ -455,6 +473,9 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         return initial_state_prime, monitoring_atoms
 
     def _get_monitoring_atoms_always_within(self, state_evaluator: StateEvaluator, always_within: list[AlwaysWithin], I: UPState):
+        '''
+        Build the monitoring atoms for always-within constraints.
+        '''
         monitoring_atoms = []
         always_within_counter = 0
         initial_marks_value = {}

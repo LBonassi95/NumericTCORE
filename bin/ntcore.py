@@ -11,9 +11,8 @@ from numeric_tcore.parsing_extensions import *
 @click.argument('domain')
 @click.argument('problem')
 @click.argument('output')
-@click.option('--regression_mode', 'achiever_strategy', flag_value=REGRESSION, default=True)
 @click.option('--delta_mode', 'achiever_strategy', flag_value=DELTA)
-@click.option('--naive_mode', 'achiever_strategy', flag_value=NAIVE)
+@click.option('--naive_mode', 'achiever_strategy', flag_value=NAIVE, default=True)
 @click.option('--verbose', is_flag=True, default=False)
 def main(domain, problem, output, achiever_strategy, verbose):
     problem = parse_pddl3(domain, problem)

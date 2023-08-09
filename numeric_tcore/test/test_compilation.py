@@ -98,7 +98,7 @@ def test_compilation_farm():
         compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
         new_problem = compilation_result.problem
     
-    compiler = NumericCompiler(achiever_computation_strategy=REGRESSION) 
+    compiler = NumericCompiler(achiever_computation_strategy=DELTA) 
     tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
     compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
     new_problem = compilation_result.problem
