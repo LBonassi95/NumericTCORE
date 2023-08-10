@@ -89,8 +89,8 @@
 (:constraints (and (always-within 0.01 (> (onboard plane1) 0) (= (onboard plane1) 0))
 (always-within 0.01 (> (onboard plane2) 0) (= (onboard plane2) 0))
 (always-within 0.01 (> (onboard plane3) 0) (= (onboard plane3) 0))
-(always-within 0.003 (<= (fuel plane1) (* 0.5 (capacity plane1))) (= (fuel plane1) (capacity plane1)))
-(always-within 0.003 (<= (fuel plane2) (* 0.5 (capacity plane2))) (= (fuel plane2) (capacity plane2)))
-(always-within 0.003 (<= (fuel plane3) (* 0.5 (capacity plane3))) (= (fuel plane3) (capacity plane3)))))
+(always-within 0.004 (<= (fuel plane1) (* 0.5 (capacity plane1))) (= (fuel plane1) (capacity plane1)))
+(always-within 0.004 (<= (fuel plane2) (* 0.5 (capacity plane2))) (= (fuel plane2) (capacity plane2)))
+(always-within 0.004 (<= (fuel plane3) (* 0.5 (capacity plane3))) (= (fuel plane3) (capacity plane3)))))
 
 )
