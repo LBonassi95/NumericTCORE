@@ -43,7 +43,7 @@ python ./bin/metcore.py DOMAIN PROBLEM OUTPUT --naive_mode
 python ./bin/metcore.py DOMAIN PROBLEM OUTPUT --delta_mode
 ```
 
-As the name suggest, --naive_mode runs ntcore^N, while --delta_mode runs ntcore^\Delta.
+The option --naive_mode runs the basic version of ntcore, while --delta_mode runs ntcore^+.
 The default is `--naive_mode`. For more informations, run ```python ./bin/ntcore.py --help```
 
 ## Limitations
@@ -52,6 +52,6 @@ In principle Numeric Tcore supports propositional constraints, but in practice s
 
 # Example
 
-While inside the NumericTCORE folder, to compile the first instance of counters with ntcore^\Delta you can run:
+While inside the NumericTCORE folder, to compile the first instance of counters with ntcore^+ you can run:
 
 ```python ./bin/ntcore.py benchmark/fn-counters/domain.pddl benchmark/fn-counters/instance_2.pddl . --delta_mode```
