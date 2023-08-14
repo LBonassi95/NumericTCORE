@@ -13,7 +13,7 @@ Numeric Tcore uses the following external libraries:
 - click
 - sympy
 
-Use the following commands to install Numeric Tcore. We suggest starting with a fresh python environment (we tested with python 3.10).
+Use the following commands to install Numeric Tcore. We suggest starting with a fresh Python environment (we tested with Python 3.10).
 
 1. Install dependencies:
 ```
@@ -28,7 +28,7 @@ pip install .
 
 ## Running the compilation
 
-The main entrypoint of Numeric Tcore is "./bin/ntcore.py". Basic usage:
+The main entry point of Numeric Tcore is "./bin/ntcore.py". Basic usage:
 ```
 python ./bin/ntcore.py DOMAIN PROBLEM OUTPUT_PATH
 ```
@@ -47,8 +47,8 @@ The option --naive_mode runs the basic version of ntcore, while --delta_mode run
 The default is `--naive_mode`. For more informations, run ```python ./bin/ntcore.py --help```
 
 ## Limitations
-The current version of Numeric Tcore has been thoroughly tested with trajectory constraints featuring formulas with ONLY numeric conditions (those in the `benchmark/`).
-In principle Numeric Tcore supports propositional constraints, but in practice such feature has only been briefly tested.
+The current version of Numeric Tcore has been thoroughly tested with trajectory constraints featuring formulas with only numeric conditions (those in the `benchmark/`).
+In principle, Numeric Tcore supports propositional constraints, but in practice, such a feature has only been briefly tested.
 
 # Example
 
