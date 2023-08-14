@@ -1,4 +1,4 @@
-;; Enrico Scala (enricos83@gmail.com) and Miquel Ramirez (miquel.ramirez@gmail.com)
+ 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; counters-ineq-rnd domain, functional strips version
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

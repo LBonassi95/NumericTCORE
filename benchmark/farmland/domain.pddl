@@ -1,4 +1,4 @@
-;; Enrico Scala (enricos83@gmail.com) and Miquel Ramirez (miquel.ramirez@gmail.com)
+ 
 (define (domain farmland)
     (:types farm -object)
     (:predicates (adj ?f1 ?f2 -farm))

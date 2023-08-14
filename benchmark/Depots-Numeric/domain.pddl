@@ -1,4 +1,4 @@
-;; Enrico Scala (enricos83@gmail.com) and Miquel Ramirez (miquel.ramirez@gmail.com)
+ 
 (define (domain depot)
 ;(:requirements :typing :fluents)
 (:types place locatable - object

@@ -1,4 +1,4 @@
-;; Enrico Scala (enricos83@gmail.com) and Miquel Ramirez (miquel.ramirez@gmail.com)
+ 
 (define (domain rover)
 ;(:requirements :typing :fluents)
 (:types rover -object waypoint -object store -object camera -object mode -object lander -object objective -object)

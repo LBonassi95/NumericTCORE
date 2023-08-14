@@ -1,6 +1,6 @@
-;; Enrico Scala (enricos83@gmail.com) and Miquel Ramirez (miquel.ramirez@gmail.com)
+ 
 ; IPC5 Domain: TPP Metric
-; Authors: Alfonso Gerevini and Alessandro Saetti 
+  
 
 (define (domain TPP-Metric)
 ;(:requirements :typing :fluents) 
