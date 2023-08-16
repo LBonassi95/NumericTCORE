@@ -38,8 +38,8 @@ python ./bin/ntcore.py DOMAIN PROBLEM OUTPUT_PATH
 
 To switch between the two variants of Numeric Tcore, use one of the following commands:
 ```
-python ./bin/metcore.py DOMAIN PROBLEM OUTPUT --naive_mode
-python ./bin/metcore.py DOMAIN PROBLEM OUTPUT --delta_mode
+python ./bin/ntcore.py DOMAIN PROBLEM OUTPUT --naive_mode
+python ./bin/ntcore.py DOMAIN PROBLEM OUTPUT --delta_mode
 ```
 
 The option --naive_mode runs the basic version of ntcore, while --delta_mode runs ntcore^+.
