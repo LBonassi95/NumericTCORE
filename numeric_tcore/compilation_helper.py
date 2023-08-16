@@ -78,6 +78,9 @@ def ground_metric_time_constraints(expression_quantifier_remover: ExpressionQuan
             ground_metric_time_constraints.append(AlwaysWithin(c.t,
                                                                 expression_quantifier_remover.remove_quantifiers(c.formula1, problem), 
                                                                 expression_quantifier_remover.remove_quantifiers(c.formula2, problem)))
+        elif isinstance(c, AtEnd):
+            ground_metric_time_constraints.append(AtEnd(expression_quantifier_remover.remove_quantifiers(c.formula, problem)))
+   
     return ground_metric_time_constraints
 
 def _remove_quantifier(expression_quantifier_remover: ExpressionQuantifiersRemover, C: list, problem: Problem):
@@ -112,5 +115,7 @@ def reformulate_metric_time_constraints(metric_time_constraints: List, time: Flu
             reformulated_constraints.append(Always(arg))
             arg = Or(Not(LE(FluentExp(time), constr.u1)), constr.formula)
             reformulated_constraints.append(AtEnd(arg))
+        elif isinstance(constr, AtEnd):
+            reformulated_constraints.append(AtEnd(constr.formula))
              
     return reformulated_constraints
