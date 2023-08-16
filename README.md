@@ -17,8 +17,7 @@ Use the following commands to install Numeric Tcore. We suggest starting with a 
 
 1. Install dependencies:
 ```
-pip install unified_planning==1.0.0.29.dev1
-pip install click sympy
+pip install click sympy unified_planning==1.0.0.29.dev1 --no-cache-dir
 ```
 
 2. From the "NumericTCORE" directory, install the package with:
