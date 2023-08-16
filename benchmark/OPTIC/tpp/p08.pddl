@@ -326,9 +326,9 @@
 (within 0.064 (>= (bought goods1) (request goods1)))
 (within 0.064 (>= (bought goods2) (request goods2)))
 (within 0.064 (>= (bought goods3) (request goods3)))
-(within 0.14400000000000002 (>= (bought goods4) (request goods4)))
-(within 0.14400000000000002 (>= (bought goods5) (request goods5)))
-(within 0.14400000000000002 (>= (bought goods6) (request goods6)))
-(within 0.14400000000000002 (>= (bought goods7) (request goods7)))))
+(within 0.144 (>= (bought goods4) (request goods4)))
+(within 0.144 (>= (bought goods5) (request goods5)))
+(within 0.144 (>= (bought goods6) (request goods6)))
+(within 0.144 (>= (bought goods7) (request goods7)))))
 
 )

@@ -4970,9 +4970,9 @@
 (within 2.71 (>= (bought goods32) (request goods32)))
 (within 2.71 (>= (bought goods33) (request goods33)))
 (within 2.71 (>= (bought goods34) (request goods34)))
-(within 3.0060000000000002 (>= (bought goods35) (request goods35)))
-(within 3.0060000000000002 (>= (bought goods36) (request goods36)))
-(within 3.0060000000000002 (>= (bought goods37) (request goods37)))
-(within 3.0060000000000002 (>= (bought goods38) (request goods38)))))
+(within 3.006 (>= (bought goods35) (request goods35)))
+(within 3.006 (>= (bought goods36) (request goods36)))
+(within 3.006 (>= (bought goods37) (request goods37)))
+(within 3.006 (>= (bought goods38) (request goods38)))))
 
 )

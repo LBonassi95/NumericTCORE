@@ -2767,8 +2767,8 @@
 (within 1.48 (>= (bought goods22) (request goods22)))
 (within 1.48 (>= (bought goods23) (request goods23)))
 (within 1.48 (>= (bought goods24) (request goods24)))
-(within 1.6420000000000001 (>= (bought goods25) (request goods25)))
-(within 1.6420000000000001 (>= (bought goods26) (request goods26)))
-(within 1.6420000000000001 (>= (bought goods27) (request goods27)))))
+(within 1.642 (>= (bought goods25) (request goods25)))
+(within 1.642 (>= (bought goods26) (request goods26)))
+(within 1.642 (>= (bought goods27) (request goods27)))))
 
 )
