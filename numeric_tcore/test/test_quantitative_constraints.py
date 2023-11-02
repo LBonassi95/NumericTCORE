@@ -22,6 +22,15 @@ def test_compilation():
     compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
     new_problem = compilation_result.problem
 
+def test_compilation_at_end():
+    domain_path = pkg_resources.resource_filename(__name__, 'pddl/flags/domain.pddl')
+    problem_path = pkg_resources.resource_filename(__name__, 'pddl/flags/p05.pddl')
+    problem = parse_pddl3(domain_path, problem_path)
+    compiler = NumericCompiler() 
+    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
+    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
+
 
 def test_compilation_tpp_delta_quantitative():
     domain_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/domain.pddl')

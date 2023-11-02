@@ -211,7 +211,14 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         map_grounded_action = self._grounding_result.map_back_action_instance.keywords["map"]
         #######################################
 
+        logger.actions = len(actions)
         for a in actions:
+            
+            logger.original_precondition_size += get_formula_size(And(*[a.preconditions]))
+            for eff in a.effects:
+                if eff.condition != TRUE():
+                    logger.original_effect_size += get_formula_size(eff.condition)
+            
             map_value = map_grounded_action[a]
             assert isinstance(a, InstantaneousAction)
 
@@ -236,24 +243,35 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
             for pre in new_P:
                 if pre != TRUE():
                     a.preconditions.append(pre)
+                    logger.new_precondition_size += get_formula_size(pre)
 
             for eff in new_E:
                 a.effects.append(eff)
+                assert isinstance(eff, Effect)
+                if eff.condition != TRUE():
+                    logger.new_precondition_size += get_formula_size(eff.condition)
             if FALSE() not in a.preconditions:
                 actions_prime.append(a)
             trace_back_map[a] = map_value
         # create new problem to return
         # adding new fluents, goal, initial values and actions
+        
+        logger.original_goal_size = get_formula_size(And(*[self._problem.goals]))
+        logger.new_goal_size = get_formula_size(goal_prime)
         new_goal = (And(self._problem.goals, goal_prime)).simplify()
         self._problem.clear_goals()
         self._problem.add_goal(new_goal)
         self._problem.clear_trajectory_constraints()
+
+        logger.fluents = len(self._problem.fluents) - 1
         
         for fluent in f_prime:
             self._problem.add_fluent(fluent)
 
         for fluent in f_prime_always_within:
             self._problem.add_fluent(fluent)
+
+        logger.new_fluents = 1 + len(self._problem.fluents) - logger.fluents
         
         self._problem.clear_actions()
         for action in actions_prime:

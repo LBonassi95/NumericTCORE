@@ -6,6 +6,19 @@ class Logger:
     def __init__(self):
         self.new_preconditions = 0
         self.new_effects = 0
+        
+        self.fluents = 0
+        self.new_fluents = 0
+        self.actions = 0
+
+        self.original_precondition_size = 0
+        self.original_effect_size = 0
+        self.original_goal_size = 0
+        
+        self.new_precondition_size = 0
+        self.new_effect_size = 0
+        self.new_goal_size = 0
+
         self.qualitative_constraints = []
         self.quantitative_constraints = []
 
@@ -55,6 +68,15 @@ class Logger:
         msg += "\nHoldAfter: {}".format(hold_after)
         msg += "\nWithin: {}".format(within)
         msg += "\nAlwaysWithin: {}".format(always_within)
+        msg += "\nFluents: {}".format(self.fluents)
+        msg += "\nNew fluents: {}".format(self.new_fluents)
+        msg += "\nActions: {}".format(self.actions)
+        msg += "\nOriginal precondition size: {}".format(self.original_precondition_size)
+        msg += "\nOriginal effect size: {}".format(self.original_effect_size)
+        msg += "\nOriginal goal size: {}".format(self.original_goal_size)
+        msg += "\nNew precondition size: {}".format(self.new_precondition_size)
+        msg += "\nNew effect size: {}".format(self.new_effect_size)
+        msg += "\nNew goal size: {}".format(self.new_goal_size)
         return msg
 
 
@@ -78,6 +100,9 @@ def ground_quantitative_constraints(expression_quantifier_remover: ExpressionQua
             ground_quantitative_constraints.append(AlwaysWithin(c.t,
                                                                 expression_quantifier_remover.remove_quantifiers(c.formula1, problem), 
                                                                 expression_quantifier_remover.remove_quantifiers(c.formula2, problem)))
+        elif isinstance(c, AtEnd):
+            ground_quantitative_constraints.append(AtEnd(expression_quantifier_remover.remove_quantifiers(c.formula, problem)))
+            
     return ground_quantitative_constraints
 
 def _remove_quantifier(expression_quantifier_remover: ExpressionQuantifiersRemover, C: list, problem: Problem):
@@ -112,5 +137,25 @@ def reformulate_quantitative_constraints(quantitative_constraints: List, time: F
             reformulated_constraints.append(Always(arg))
             arg = Or(Not(LE(FluentExp(time), constr.u1)), constr.formula)
             reformulated_constraints.append(AtEnd(arg))
+        elif isinstance(constr, AtEnd):
+            reformulated_constraints.append(AtEnd(constr.formula))
              
     return reformulated_constraints
+
+
+def get_formula_size(formula: FNode):
+
+    if formula.is_and() or formula.is_or():
+        return sum([get_formula_size(arg) for arg in formula.args])
+    elif formula.is_not():
+        return get_formula_size(formula.arg(0))
+    elif formula.is_fluent_exp():
+        return 1
+    elif formula.is_equals() or formula.is_le() or formula.is_lt():
+        return get_formula_size(formula.arg(0)) + get_formula_size(formula.arg(1))
+    elif formula.is_plus() or formula.is_minus() or formula.is_times() or formula.is_div():
+        return get_formula_size(formula.arg(0)) + get_formula_size(formula.arg(1))
+    elif formula.is_constant():
+        return 1
+    else:
+        raise Exception("Unknown formula type {}".format(formula))
