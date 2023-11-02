@@ -151,6 +151,8 @@ def get_formula_size(formula: FNode):
         return get_formula_size(formula.arg(0))
     elif formula.is_fluent_exp():
         return 1
+    elif formula.is_true() or formula.is_false():
+        return 0
     elif formula.is_equals() or formula.is_le() or formula.is_lt():
         return get_formula_size(formula.arg(0)) + get_formula_size(formula.arg(1))
     elif formula.is_plus() or formula.is_minus() or formula.is_times() or formula.is_div():

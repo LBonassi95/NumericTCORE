@@ -249,7 +249,7 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
                 a.effects.append(eff)
                 assert isinstance(eff, Effect)
                 if eff.condition != TRUE():
-                    logger.new_precondition_size += get_formula_size(eff.condition)
+                    logger.new_effect_size += get_formula_size(eff.condition)
             if FALSE() not in a.preconditions:
                 actions_prime.append(a)
             trace_back_map[a] = map_value
@@ -257,6 +257,7 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         # adding new fluents, goal, initial values and actions
         
         logger.original_goal_size = get_formula_size(And(*[self._problem.goals]))
+        #if goal_prime != TRUE():
         logger.new_goal_size = get_formula_size(goal_prime)
         new_goal = (And(self._problem.goals, goal_prime)).simplify()
         self._problem.clear_goals()
@@ -271,7 +272,7 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         for fluent in f_prime_always_within:
             self._problem.add_fluent(fluent)
 
-        logger.new_fluents = 1 + len(self._problem.fluents) - logger.fluents
+        logger.new_fluents = len(self._problem.fluents) - logger.fluents
         
         self._problem.clear_actions()
         for action in actions_prime:
