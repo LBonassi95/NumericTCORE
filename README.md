@@ -54,3 +54,19 @@ In principle, Numeric Tcore supports propositional constraints, but in practice,
 While inside the NumericTCORE folder, to compile the first instance of counters with ntcore^+ you can run:
 
 ```python ./bin/ntcore.py benchmark/fn-counters/domain.pddl benchmark/fn-counters/instance_2.pddl . --delta_mode```
+
+# Citation
+
+```
+@inproceedings{DBLP:conf/aaai/BonassiGS24,
+  author       = {Luigi Bonassi and
+                  Alfonso Emilio Gerevini and
+                  Enrico Scala},
+  title        = {Dealing with Numeric and Metric Time Constraints in {PDDL3} via Compilation
+                  to Numeric Planning},
+  booktitle    = {{AAAI}},
+  pages        = {20036--20043},
+  publisher    = {{AAAI} Press},
+  year         = {2024}
+}
+```
