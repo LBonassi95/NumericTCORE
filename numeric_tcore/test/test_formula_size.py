@@ -11,6 +11,7 @@ from unified_planning.model.walkers import Simplifier
 import pkg_resources
 
 from numeric_tcore.compilation_helper import *
+from numeric_tcore.compilation import *
 
 Boat = UserType("Boat")
 
@@ -48,6 +49,16 @@ def test_get_formula_size(formula, expected):
     assert get_formula_size(formula) == expected
 
 
+def test_compilation_block():
+    # domain_path = pkg_resources.resource_filename(__name__, 'pddl/block-grouping/domain.pddl')
+    # problem_path = pkg_resources.resource_filename(__name__, 'pddl/block-grouping/instance_5_10_2_1.pddl')
+    domain_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/domain.pddl')
+    problem_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/p03.pddl')
+    problem = parse_pddl3(domain_path, problem_path)
+    compiler = NumericCompiler(achiever_computation_strategy=NAIVE) 
+    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
+    compilation_result, logger = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem = compilation_result.problem
 
 if __name__ == "__main__":
-    test_get_formula_size()
+    test_compilation_block()

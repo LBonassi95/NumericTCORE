@@ -135,6 +135,9 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         :return: The resulting `CompilerResult` data structure.
         """
 
+        count_true = False
+        print("COUNT TRUE = {}".format(count_true))
+
         logger = Logger()
 
         quantitative_constraints = []
@@ -214,10 +217,10 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         logger.actions = len(actions)
         for a in actions:
             
-            logger.original_precondition_size += get_formula_size(And(*[a.preconditions]))
+            logger.original_precondition_size += get_formula_size(And(*[a.preconditions]), count_true)
             for eff in a.effects:
                 if eff.condition != TRUE():
-                    logger.original_effect_size += get_formula_size(eff.condition)
+                    logger.original_effect_size += get_formula_size(eff.condition, count_true)
             
             map_value = map_grounded_action[a]
             assert isinstance(a, InstantaneousAction)
@@ -237,28 +240,34 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
             new_P, new_E = self._get_preconditions_and_effects(relevant_constraints, a, env)
             new_P, new_E = self._get_preconditions_and_effects_always_within(always_within, a, new_P, new_E)
             
-            logger.new_preconditions += len(new_P)
+            if count_true:
+                logger.new_preconditions += len(new_P)
+            else:
+                logger.new_preconditions += len([p for p in new_P if p != TRUE()])
             logger.new_effects += len(new_E)
 
             for pre in new_P:
+                logger.new_precondition_size += get_formula_size(pre.simplify(), count_true)
                 if pre != TRUE():
                     a.preconditions.append(pre)
-                    logger.new_precondition_size += get_formula_size(pre)
 
             for eff in new_E:
                 a.effects.append(eff)
                 assert isinstance(eff, Effect)
-                if eff.condition != TRUE():
-                    logger.new_effect_size += get_formula_size(eff.condition)
+                # if eff.condition != TRUE():
+                logger.new_effect_size += get_formula_size(eff.condition.simplify(), count_true)
+                logger.new_effect_size += get_formula_size(eff.fluent.simplify(), count_true)
+                logger.new_effect_size += get_formula_size(eff.value.simplify(), count_true)
+
             if FALSE() not in a.preconditions:
                 actions_prime.append(a)
             trace_back_map[a] = map_value
         # create new problem to return
         # adding new fluents, goal, initial values and actions
         
-        logger.original_goal_size = get_formula_size(And(*[self._problem.goals]))
+        logger.original_goal_size = get_formula_size(And(*[self._problem.goals]), count_true)
         #if goal_prime != TRUE():
-        logger.new_goal_size = get_formula_size(goal_prime)
+        logger.new_goal_size = get_formula_size(goal_prime, count_true)
         new_goal = (And(self._problem.goals, goal_prime)).simplify()
         self._problem.clear_goals()
         self._problem.add_goal(new_goal)
@@ -333,7 +342,7 @@ class NumericCompiler(engines.engine.Engine, CompilerMixin):
         if self.achiever_helper.isAchiever(a, And([phi, Not(psi)])):
             r_phi_and_not_psi_and_mark = And(regression(And([phi, Not(psi)]), a).simplify(), 
                                          Equals(mark, -1)
-                                         )
+                                         ).simplify()
             self._add_numeric_cond_eff(new_E, r_phi_and_not_psi_and_mark, mark, Plus(FluentExp(self.time_fluent), 1))
         
         if self.achiever_helper.isAchiever(a, psi):
