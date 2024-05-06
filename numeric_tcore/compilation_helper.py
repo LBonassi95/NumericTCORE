@@ -1,5 +1,5 @@
 from unified_planning.shortcuts import *
-from unified_planning.model.walkers import ExpressionQuantifiersRemover
+from unified_planning.model.walkers import ExpressionQuantifiersRemover as QuantifiersRemover
 from numeric_tcore.parsing_extensions import *
 
 class Logger:
@@ -20,7 +20,7 @@ class Logger:
         self.new_goal_size = 0
 
         self.qualitative_constraints = []
-        self.quantitative_constraints = []
+        self.time_constraints = []
 
     def get_log(self):
         always = 0
@@ -46,7 +46,7 @@ class Logger:
                 sometime_after += 1
             else:
                 raise Exception("Unknown constraint type {}".format(c))
-        for c in self.quantitative_constraints:
+        for c in self.time_constraints:
             if isinstance(c, HoldDuring):
                 hold_during += 1
             elif isinstance(c, HoldAfter):
@@ -80,37 +80,49 @@ class Logger:
         return msg
 
 
-def build_constraint_list(expression_quantifier_remover: ExpressionQuantifiersRemover, problem: Problem):
+def build_constraint_list(quantifier_remover: QuantifiersRemover, problem: Problem) -> List[FNode]:
         constraints = problem.trajectory_constraints
         C_temp = (And(constraints)).simplify()
         C_list = C_temp.args if C_temp.is_and() else [C_temp]
-        C_to_return = (And(_remove_quantifier(expression_quantifier_remover, C_list, problem))).simplify()
-        return C_to_return.args if C_to_return.is_and() else [C_to_return]
+        C_to_return = (And(_remove_quantifier(quantifier_remover, C_list, problem))).simplify()
+        return list(C_to_return.args) if C_to_return.is_and() else [C_to_return]
 
-def ground_quantitative_constraints(expression_quantifier_remover: ExpressionQuantifiersRemover, quantitative_constraints: List, problem: Problem):
-    ground_quantitative_constraints = []
-    for c in quantitative_constraints:
-        if isinstance(c, Within):
-            ground_quantitative_constraints.append(Within(c.t, expression_quantifier_remover.remove_quantifiers(c.formula, problem)))
-        elif isinstance(c, HoldAfter):
-            ground_quantitative_constraints.append(HoldAfter(c.t, expression_quantifier_remover.remove_quantifiers(c.formula, problem)))
-        elif isinstance(c, HoldDuring):
-            ground_quantitative_constraints.append(HoldDuring(c.u1, c.u2, expression_quantifier_remover.remove_quantifiers(c.formula, problem)))
-        elif isinstance(c, AlwaysWithin):
-            ground_quantitative_constraints.append(AlwaysWithin(c.t,
-                                                                expression_quantifier_remover.remove_quantifiers(c.formula1, problem), 
-                                                                expression_quantifier_remover.remove_quantifiers(c.formula2, problem)))
-        elif isinstance(c, AtEnd):
-            ground_quantitative_constraints.append(AtEnd(expression_quantifier_remover.remove_quantifiers(c.formula, problem)))
+
+def normalize_time_constraints(quantifier_remover: QuantifiersRemover, time_constraints: List, time_fluent: Fluent, problem: Problem):
+    if len(time_constraints) > 0:
+        time_constraints = ground_time_constraints(quantifier_remover, time_constraints, problem)
+        always_within = [c for c in time_constraints if isinstance(c, AlwaysWithin)]
+        qualitative_constraints, at_end_constraints = reformulate_time_constraints(time_constraints, time_fluent)
+        # qualitative_constraints = [c for c in qualitative_constraints if not isinstance(c, AtEnd)]
+        return qualitative_constraints, always_within, at_end_constraints
+    else:
+        return [], [], []
             
-    return ground_quantitative_constraints
 
-def _remove_quantifier(expression_quantifier_remover: ExpressionQuantifiersRemover, C: list, problem: Problem):
+def ground_time_constraints(quantifier_remover: QuantifiersRemover, time_constraints: List, problem: Problem):
+    ground_time_constraints = []
+    for c in time_constraints:
+        if isinstance(c, Within):
+            ground_time_constraints.append(Within(c.t, quantifier_remover.remove_quantifiers(c.formula, problem)))
+        elif isinstance(c, HoldAfter):
+            ground_time_constraints.append(HoldAfter(c.t, quantifier_remover.remove_quantifiers(c.formula, problem)))
+        elif isinstance(c, HoldDuring):
+            ground_time_constraints.append(HoldDuring(c.u1, c.u2, quantifier_remover.remove_quantifiers(c.formula, problem)))
+        elif isinstance(c, AlwaysWithin):
+            ground_time_constraints.append(AlwaysWithin(c.t,
+                                                                quantifier_remover.remove_quantifiers(c.formula1, problem), 
+                                                                quantifier_remover.remove_quantifiers(c.formula2, problem)))
+        elif isinstance(c, AtEnd):
+            ground_time_constraints.append(AtEnd(quantifier_remover.remove_quantifiers(c.formula, problem)))
+            
+    return ground_time_constraints
+
+def _remove_quantifier(quantifier_remover: QuantifiersRemover, C: list, problem: Problem):
         new_C = []
         for c in C:
             assert c.node_type is not OperatorKind.EXISTS
             new_C.append(
-                expression_quantifier_remover.remove_quantifiers(c, problem)
+                quantifier_remover.remove_quantifiers(c, problem)
             )
         return new_C
 
@@ -120,27 +132,28 @@ def get_landmark_constraints(C: List[FNode]):
             yield constr
 
 
-def reformulate_quantitative_constraints(quantitative_constraints: List, time: Fluent):
-    reformulated_constraints = []
-    for constr in quantitative_constraints:
+def reformulate_time_constraints(time_constraints: List, time: Fluent):
+    qualitative_constraints = []
+    at_end_constraints = []
+    for constr in time_constraints:
         if isinstance(constr, Within): 
             arg = And(constr.formula, LE(FluentExp(time), constr.t))
-            reformulated_constraints.append(Sometime(arg))
+            qualitative_constraints.append(Sometime(arg))
         elif isinstance(constr, HoldAfter):
             arg1 = Equals(FluentExp(time), Plus(constr.t, 1))
             arg2 = constr.formula
-            reformulated_constraints.append(SometimeAfter(arg1, arg2))
+            qualitative_constraints.append(SometimeAfter(arg1, arg2))
             arg = Or(Not(LE(FluentExp(time), constr.t)), constr.formula)
-            reformulated_constraints.append(AtEnd(arg))
+            at_end_constraints.append(AtEnd(arg))
         elif isinstance(constr, HoldDuring):
             arg = Or(Not(And(GE(FluentExp(time), constr.u1), LT(FluentExp(time), constr.u2))), constr.formula)
-            reformulated_constraints.append(Always(arg))
+            qualitative_constraints.append(Always(arg))
             arg = Or(Not(LE(FluentExp(time), constr.u1)), constr.formula)
-            reformulated_constraints.append(AtEnd(arg))
+            at_end_constraints.append(AtEnd(arg))
         elif isinstance(constr, AtEnd):
-            reformulated_constraints.append(AtEnd(constr.formula))
+            at_end_constraints.append(AtEnd(constr.formula))
              
-    return reformulated_constraints
+    return qualitative_constraints, at_end_constraints
 
 
 def get_formula_size(formula: FNode, count_true_false = False):

@@ -55,10 +55,8 @@ def test_compilation_block():
     domain_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/domain.pddl')
     problem_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/p03.pddl')
     problem = parse_pddl3(domain_path, problem_path)
-    compiler = NumericCompiler(achiever_computation_strategy=NAIVE) 
-    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
-    compilation_result, logger = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
-    new_problem = compilation_result.problem
+    compiler = NumericCompiler(achiever_strategy=NAIVE)
+    new_problem, logger = compiler.compile(problem)
 
 if __name__ == "__main__":
     test_compilation_block()

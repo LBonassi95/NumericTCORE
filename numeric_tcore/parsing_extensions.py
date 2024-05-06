@@ -9,7 +9,7 @@ from unified_planning.environment import get_environment
 
 #WITHIN = "within"
 
-class AtEnd:
+class AtEnd(FNode):
 
     def __init__(self, formula) -> None:
         self.formula = formula
@@ -109,14 +109,19 @@ def parse_pddl3(domain_path, problem_path):
     reader._trajectory_constraints["always-within"] = parser_extensions.parse_alwayswithin
     problem = reader.parse_problem(domain_path, problem_path)
     quantitative_constrants = parser_extensions.constraints
-    return PDDL3QuantitativeProblem(problem, quantitative_constrants)
+    return PDDL3Problem(problem, quantitative_constrants)
 
 
-class PDDL3QuantitativeProblem(AbstractProblem):
+class PDDL3Problem(AbstractProblem):
 
-    def __init__(self, problem, quantitative_constraints) -> None:
+    """
+    The Unified Planning framework supports some PDDL3 constraints.
+    This class extends the support to include quantitative constraints and at-end constraints.
+    """
+
+    def __init__(self, problem: Problem, time_constraints: List[FNode]) -> None:
         self.problem = problem
-        self.quantitative_constraints = quantitative_constraints
+        self.time_constraints = time_constraints 
 
     def kind(self) -> "up.model.problem_kind.ProblemKind":
         return super().kind()

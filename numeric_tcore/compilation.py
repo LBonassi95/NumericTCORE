@@ -37,7 +37,7 @@ from typing import List, Dict, Tuple
 from numeric_tcore.numeric_regression import regression
 from numeric_tcore.compilation_helper import *
 from numeric_tcore.achievers_helper import *
-from numeric_tcore.parsing_extensions import PDDL3QuantitativeProblem, Within
+from numeric_tcore.parsing_extensions import PDDL3Problem, Within
 
 NUM = "num"
 CONSTRAINTS = "constraints"
@@ -46,290 +46,195 @@ GOAL = "goal"
 SEEN_PHI = "seen-phi"
 SEEN_PSI = "seen-psi"
 SEPARATOR = "-"
+GROUNDING_ERROR_MSG = "Error during the grounding phase"
 UNKNOWN_CONSTRAINT_ERROR_MSG = "ERROR This compiler cannot handle this constraint = {}"
 
-class NumericCompiler(engines.engine.Engine, CompilerMixin):
+class NumericCompiler:
     """
-    TrajectoryConstraintsRemover class: the `TrajectoryConstraintsRemover` takes a :class:`~unified_planning.model.Problem`
-    that contains 'trajectory_constraints' and returns a new grounded 'Problem' without those constraints.
-
-    The compiler, for each trajectory_constraints manages 'Actions' (precondition and effects) and 'Goals'.
-
-    This `Compiler` supports only the the `TRAJECTORY_CONSTRAINTS_REMOVING` :class:`~unified_planning.engines.CompilationKind`.
+    Main class of the NTCORE compiler. It removes trajectory constraints from a PDDL3 problem.
     """
 
-    def __init__(self, achiever_computation_strategy = REGRESSION):
-        engines.engine.Engine.__init__(self)
-        CompilerMixin.__init__(self, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    def __init__(self, achiever_strategy = NAIVE):
         self._monitoring_atom_dict: Dict[
             "up.model.fnode.FNode", "up.model.fnode.FNode"
         ] = {}
-        self.achiever_computation_strategy = achiever_computation_strategy
+        self.achiever_strategy = achiever_strategy
         self.achiever_helper = None
-
-    @property
-    def name(self):
-        return "TrajectoryConstraintsRemover"
-
-    @staticmethod
-    def supports(problem_kind):
-        #return problem_kind <= NumericCompiler.supported_kind()
-        return True
     
-    @staticmethod
-    def resulting_problem_kind(
-        problem_kind: ProblemKind, compilation_kind: Optional[CompilationKind] = None
-    ) -> ProblemKind:
-        new_kind = ProblemKind(problem_kind.features)
-        if new_kind.has_trajectory_constraints() or new_kind.has_state_invariants():
-            new_kind.unset_constraints_kind("TRAJECTORY_CONSTRAINTS")
-            new_kind.unset_constraints_kind("STATE_INVARIANTS")
-            new_kind.set_conditions_kind("NEGATIVE_CONDITIONS")
-            new_kind.set_conditions_kind("DISJUNCTIVE_CONDITIONS")
-        return new_kind
-
-    @staticmethod
-    def supports_compilation(compilation_kind: CompilationKind) -> bool:
-        return compilation_kind == CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
-
-    @staticmethod
-    def supported_kind() -> ProblemKind:
-        supported_kind = ProblemKind()
-        supported_kind.set_problem_class("ACTION_BASED")
-        supported_kind.set_typing("FLAT_TYPING")
-        supported_kind.set_typing("HIERARCHICAL_TYPING")
-        supported_kind.set_numbers("CONTINUOUS_NUMBERS")
-        supported_kind.set_numbers("DISCRETE_NUMBERS")
-        supported_kind.set_fluents_type("NUMERIC_FLUENTS")
-        supported_kind.set_fluents_type("OBJECT_FLUENTS")
-        supported_kind.set_conditions_kind("NEGATIVE_CONDITIONS")
-        supported_kind.set_conditions_kind("DISJUNCTIVE_CONDITIONS")
-        supported_kind.set_conditions_kind("EQUALITY")
-        supported_kind.set_conditions_kind("EXISTENTIAL_CONDITIONS")
-        supported_kind.set_conditions_kind("UNIVERSAL_CONDITIONS")
-        supported_kind.set_effects_kind("CONDITIONAL_EFFECTS")
-        supported_kind.set_effects_kind("INCREASE_EFFECTS")
-        supported_kind.set_effects_kind("DECREASE_EFFECTS")
-        supported_kind.set_time("CONTINUOUS_TIME")
-        supported_kind.set_time("DISCRETE_TIME")
-        supported_kind.set_time("INTERMEDIATE_CONDITIONS_AND_EFFECTS")
-        supported_kind.set_time("TIMED_EFFECT")
-        supported_kind.set_time("TIMED_GOALS")
-        supported_kind.set_time("DURATION_INEQUALITIES")
-        supported_kind.set_simulated_entities("SIMULATED_EFFECTS")
-        supported_kind.set_constraints_kind("TRAJECTORY_CONSTRAINTS")
-        return supported_kind
-    
-    def _compile(
-        self,
-        problem: "up.model.AbstractProblem",
-        compilation_kind: "up.engines.CompilationKind",
-    ) -> CompilerResult:
+    def compile(self, pddl3_problem: PDDL3Problem) -> Tuple[CompilerResult, Logger]:
         """
-        Takes an instance of a :class:`~unified_planning.model.Problem` and the `TRAJECTORY_CONSTRAINTS_REMOVING` :class:`~unified_planning.engines.CompilationKind`
-        and returns a `CompilerResult` where the problem whitout trajectory_constraints.
-
-        :param problem: The instance of the `Problem` that contains the trajecotry constraints.
-        :param compilation_kind: The `CompilationKind` that must be applied on the given problem;
-            only `TRAJECTORY_CONSTRAINTS_REMOVING` is supported by this compiler
-        :return: The resulting `CompilerResult` data structure.
+        Transforms a PDDL3 problem into a new problem without trajectory constraints. 
         """
 
         count_true = False
-        print("COUNT TRUE = {}".format(count_true))
-
         logger = Logger()
 
-        quantitative_constraints = []
-        if isinstance(problem, PDDL3QuantitativeProblem):
-            quantitative_constraints = problem.quantitative_constraints
-            problem = problem.problem
+        time_constraints = pddl3_problem.time_constraints
+        problem: Problem = pddl3_problem.problem
 
-        assert isinstance(problem, Problem)
-        env = problem.environment
-        assert isinstance(env, Environment)
-        expression_quantifier_remover = ExpressionQuantifiersRemover(env)
-        self._grounding_result = Grounder().compile(
+        self.env = problem.environment
+        quantifier_remover = ExpressionQuantifiersRemover(self.env)
+
+        self._grounding_result: CompilerResult = Grounder().compile(
             problem, CompilationKind.GROUNDING
         )
-        assert isinstance(self._grounding_result.problem, Problem)
-        self.achiever_helper = AchieverHelper(self.achiever_computation_strategy, self._grounding_result.problem.clone())
-        self._problem = self._grounding_result.problem.clone()
-        self._problem.name = f"{self.name}_{problem.name}"
-        actions = self._problem.actions
-        initial_state = self._problem.initial_values
-        constraints = build_constraint_list(
-            expression_quantifier_remover, self._problem
-        )
-        if isinstance(constraints, tuple):
-            constraints = list(constraints)
+
+        self.ground_problem: Problem = self._grounding_result.problem.clone()
+        if self.ground_problem is None:
+            raise Exception(GROUNDING_ERROR_MSG)
+        
+        self.achiever_helper = AchieverHelper(self.achiever_strategy, self.ground_problem)
+        self.ground_problem.name = f"compiled_{problem.name}"
+        actions = self.ground_problem.actions
+        initial_state = self.ground_problem.initial_values
+
+        qualitative_constraints = build_constraint_list(quantifier_remover, self.ground_problem)
         # create a list that contains trajectory_constraints
         # trajectory_constraints can contain quantifiers that need to be removed
-        if len(constraints) == 1 and (constraints[0] == True or constraints[0] == TRUE()):
-            constraints = []
+        if len(qualitative_constraints) == 1 and (qualitative_constraints[0] == True or qualitative_constraints[0] == TRUE()):
+            qualitative_constraints = []
 
-        if len(constraints) == 0 and len(quantitative_constraints) == 0:
+        if len(qualitative_constraints) == 0 and len(time_constraints) == 0:
             raise Exception("No trajectory constraints to remove")
 
         # REGISTER CONSTRAINTS IN LOGGER #
-        logger.qualitative_constraints = [c for c in constraints]
+        logger.qualitative_constraints = [c for c in qualitative_constraints]
+        logger.time_constraints = [c for c in time_constraints]
+        ##################################
         
         # MANAGE THE TIME FLUENT #
         self.time_fluent = Fluent("time", RealType())
-        self._problem.add_fluent(self.time_fluent)
-        self._problem.set_initial_value(self.time_fluent, 0)
+        self.ground_problem.add_fluent(self.time_fluent)
+        self.ground_problem.set_initial_value(self.time_fluent, 0)
         ##########################
 
-        at_end_constraints = []
-        always_within = []
-        if len(quantitative_constraints) > 0:
-            quantitative_constraints = ground_quantitative_constraints(expression_quantifier_remover, quantitative_constraints, self._problem)
-            # REGISTER CONSTRAINTS IN LOGGER #
-            logger.quantitative_constraints = [c for c in quantitative_constraints]
-            always_within = [c for c in quantitative_constraints if isinstance(c, AlwaysWithin)]
-            constraints += reformulate_quantitative_constraints(quantitative_constraints, self.time_fluent)
-            at_end_constraints = [c for c in constraints if isinstance(c, AtEnd)]
-            constraints = [c for c in constraints if not isinstance(c, AtEnd)]
+        new_qualitative_constraints, always_within, at_end = normalize_time_constraints(quantifier_remover, time_constraints, self.time_fluent, self.ground_problem)
+        qualitative_constraints += new_qualitative_constraints
         
-
-        var2constraints_dict = self._build_var2constraints_dict(env, constraints)
-        state_evaluator = StateEvaluator(self._problem)
+        self.var2constraints_dict = self._build_var2constraints_dict(self.env, qualitative_constraints)
+        state_evaluator = StateEvaluator(self.ground_problem)
 
         actions_prime: List["up.model.effect.Effect"] = list()
 
         ############# ADDITIONAL VARIABLES CREATION #############
-        initial_state_prime, f_prime = self._get_monitoring_atoms(state_evaluator, constraints, UPState(initial_state))
+        initial_state_prime, f_prime = self._get_monitoring_atoms(state_evaluator, qualitative_constraints, UPState(initial_state))
         initial_mark_values, f_prime_always_within = self._get_monitoring_atoms_always_within(state_evaluator, always_within, UPState(initial_state))
         #########################################################
 
         ############# NEW GOAL CREATION #############
-        goal_prime = And([self._monitoring_atom_dict[c] for c in get_landmark_constraints(constraints)] + 
-                         [ae.formula for ae in at_end_constraints] + 
+        goal_prime = And([self._monitoring_atom_dict[c] for c in get_landmark_constraints(qualitative_constraints)] + 
+                         [ae.formula for ae in at_end] + 
                          [Equals(self._monitoring_atom_dict[c], -1) for c in always_within])
         #############################################
 
-        ############# BOOKKEEPING #############
-        trace_back_map: Dict[Action, Tuple[Action, List[FNode]]] = {}
-        assert isinstance(self._grounding_result.map_back_action_instance, partial)
-        map_grounded_action = self._grounding_result.map_back_action_instance.keywords["map"]
-        #######################################
-
         logger.actions = len(actions)
-        for a in actions:
-            
-            logger.original_precondition_size += get_formula_size(And(*[a.preconditions]), count_true)
-            for eff in a.effects:
-                if eff.condition != TRUE():
-                    logger.original_effect_size += get_formula_size(eff.condition, count_true)
-            
-            map_value = map_grounded_action[a]
-            assert isinstance(a, InstantaneousAction)
 
-            a.add_increase_effect(self.time_fluent, 1)
-
-            if self.achiever_computation_strategy != NAIVE:
-                relevant_constraints = self._get_relevant_constraints(a, var2constraints_dict)
-                # relevant_constraints containts the constraints which have as argument formulas with at least one variable affected by the action
-                # If a constraint is defined over varibles not appearing in the effect of the action, then the regression will leave the formula(s) unchanged.
-                # Example always (x > 0) \vee (x < 10). If x does not appear in the effect of an action "a", then R((x > 0) \vee (x < 10), a) = (x > 0) \vee (x < 10)
-                # Wether or not an action "a" is actually an achiever is checked later.
-            else:
-                # If the achiever computation strategy is NAIVE, then all the constraints are relevant
-                relevant_constraints = constraints
-                
-            new_P, new_E = self._get_preconditions_and_effects(relevant_constraints, a, env)
-            new_P, new_E = self._get_preconditions_and_effects_always_within(always_within, a, new_P, new_E)
-            
-            if count_true:
-                logger.new_preconditions += len(new_P)
-            else:
-                logger.new_preconditions += len([p for p in new_P if p != TRUE()])
-            logger.new_effects += len(new_E)
-
-            for pre in new_P:
-                logger.new_precondition_size += get_formula_size(pre.simplify(), count_true)
-                if pre != TRUE():
-                    a.preconditions.append(pre)
-
-            for eff in new_E:
-                a.effects.append(eff)
-                assert isinstance(eff, Effect)
-                # if eff.condition != TRUE():
-                logger.new_effect_size += get_formula_size(eff.condition.simplify(), count_true)
-                logger.new_effect_size += get_formula_size(eff.fluent.simplify(), count_true)
-                logger.new_effect_size += get_formula_size(eff.value.simplify(), count_true)
-
-            if FALSE() not in a.preconditions:
-                actions_prime.append(a)
-            trace_back_map[a] = map_value
+        actions_prime = [self.compile_action(a, qualitative_constraints, always_within, logger) 
+                         for a in actions 
+                         if FALSE() not in a.preconditions]
+  
         # create new problem to return
         # adding new fluents, goal, initial values and actions
-        
-        logger.original_goal_size = get_formula_size(And(*[self._problem.goals]), count_true)
-        #if goal_prime != TRUE():
-        logger.new_goal_size = get_formula_size(goal_prime, count_true)
-        new_goal = (And(self._problem.goals, goal_prime)).simplify()
-        self._problem.clear_goals()
-        self._problem.add_goal(new_goal)
-        self._problem.clear_trajectory_constraints()
+        new_goal = (And(self.ground_problem.goals, goal_prime)).simplify()
+        self.ground_problem.clear_goals()
+        self.ground_problem.add_goal(new_goal)
+        self.ground_problem.clear_trajectory_constraints()
 
-        logger.fluents = len(self._problem.fluents) - 1
+        logger.fluents = len(self.ground_problem.fluents) - 1
         
-        for fluent in f_prime:
-            self._problem.add_fluent(fluent)
-
-        for fluent in f_prime_always_within:
-            self._problem.add_fluent(fluent)
-
-        logger.new_fluents = len(self._problem.fluents) - logger.fluents
-        
-        self._problem.clear_actions()
-        for action in actions_prime:
-            self._problem.add_action(action)
+        self.ground_problem.add_fluents(f_prime + f_prime_always_within)
+        self.ground_problem.clear_actions()
+        self.ground_problem.add_actions(actions_prime)
 
         for init_val in initial_state_prime:
-            self._problem.set_initial_value(
+            self.ground_problem.set_initial_value(
                 Fluent(f"{init_val}", BoolType()), True
             )
         for mark, val in initial_mark_values.items():
-            self._problem.set_initial_value(mark, val)
+            self.ground_problem.set_initial_value(mark, val)
 
-        return CompilerResult(
-            self._problem, partial(lift_action_instance, map=trace_back_map), self.name
-        ), logger
+        
+        # Gather Information #
+        logger.new_fluents = len(self.ground_problem.fluents) - logger.fluents
+        logger.new_goal_size = get_formula_size(goal_prime, count_true)
+        ######################
+
+        return self.ground_problem, logger
+    
+
+    def compile_action(self, a: InstantaneousAction, qualitative_constraints, always_within, logger: Logger):
+        logger.original_precondition_size += get_formula_size(And(*[a.preconditions]))
+        a.add_increase_effect(self.time_fluent, 1)
+        logger.new_effects += 1
+
+        if self.achiever_strategy != NAIVE:
+            relevant_constraints = self._get_relevant_constraints(a, self.var2constraints_dict)
+            # relevant_constraints containts the constraints which have as argument formulas with at least one variable affected by the action
+            # If a constraint is defined over varibles not appearing in the effect of the action, then the regression will leave the formula(s) unchanged.
+            # Example always (x > 0) \vee (x < 10). If x does not appear in the effect of an action "a", then R((x > 0) \vee (x < 10), a) = (x > 0) \vee (x < 10)
+            # Wether or not an action "a" is actually an achiever is checked later.
+        else:
+            # If the achiever computation strategy is NAIVE, then all the constraints are relevant
+            relevant_constraints = qualitative_constraints
+        
+        # HACK! All always_within constraints are considered relevant!
+        new_P, new_E = self._get_preconditions_and_effects(relevant_constraints + always_within, a, self.env)
+
+        logger.new_preconditions += len([p for p in new_P if p != TRUE()])
+        logger.new_effects += len(new_E)
+
+        for pre in new_P:
+            logger.new_precondition_size += get_formula_size(pre.simplify())
+            if pre != TRUE():
+                a.preconditions.append(pre)
+
+        for eff in new_E:
+            a.effects.append(eff)
+            assert isinstance(eff, Effect)
+            # if eff.condition != TRUE():
+            logger.new_effect_size += get_formula_size(eff.condition.simplify())
+            logger.new_effect_size += get_formula_size(eff.fluent.simplify())
+            logger.new_effect_size += get_formula_size(eff.value.simplify())
+
+        return a
     
     def _get_preconditions_and_effects(self, relevant_constraints, a, env):
         new_P = []
         new_E = []
         for c in relevant_constraints:
-            assert isinstance(c, FNode)
-
-            if c.is_always():
-                self._compile_always(a, c, new_P)
-
-            elif c.is_at_most_once():
-                self._compile_amo(a, c, new_P, new_E)
-
-            elif c.is_sometime_before():
-                self._compile_sb(a, c, new_P, new_E)
-
-            elif c.is_sometime():
-                self._compile_sometime(a, c, new_E)
-
-            elif c.is_sometime_after():
-                self._compile_sa(a, c, new_E)
-            else:
-                raise Exception(
-                    UNKNOWN_CONSTRAINT_ERROR_MSG.format(c)
-                )
             
+            if isinstance(c, AlwaysWithin):
+                self._compile_always_within(a, c, new_P, new_E)
+            else:
+                assert isinstance(c, FNode)
+
+                if c.is_always():
+                    self._compile_always(a, c, new_P)
+
+                elif c.is_at_most_once():
+                    self._compile_amo(a, c, new_P, new_E)
+
+                elif c.is_sometime_before():
+                    self._compile_sb(a, c, new_P, new_E)
+
+                elif c.is_sometime():
+                    self._compile_sometime(a, c, new_E)
+
+                elif c.is_sometime_after():
+                    self._compile_sa(a, c, new_E)
+                
+                else:
+                    raise Exception(
+                        UNKNOWN_CONSTRAINT_ERROR_MSG.format(c)
+                    )
+                
         return new_P, new_E
 
-    def _get_preconditions_and_effects_always_within(self, always_within, a, new_P, new_E):
-        for c in always_within:
-            assert isinstance(c, AlwaysWithin)
-            self._compile_always_within(a, c, new_P, new_E)
-        return new_P, new_E
+    # def _get_preconditions_and_effects_always_within(self, always_within, a, new_P, new_E):
+    #     for c in always_within:
+    #         assert isinstance(c, AlwaysWithin)
+    #         self._compile_always_within(a, c, new_P, new_E)
+    #     return new_P, new_E
 
     def _compile_always_within(self, a: InstantaneousAction, c: AlwaysWithin, new_P: list, new_E: list):
         t = c.t
