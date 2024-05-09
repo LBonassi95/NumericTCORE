@@ -9,6 +9,7 @@ from unified_planning.model.fnode import FNode
 from numeric_tcore.achievers_helper import *
 from unified_planning.model.walkers import Simplifier
 import pkg_resources
+from numeric_tcore.parsing_extensions import parse_pddl3
 
 from numeric_tcore.compilation_helper import *
 from numeric_tcore.compilation import *

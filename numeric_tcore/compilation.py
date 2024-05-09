@@ -17,27 +17,26 @@
 import unified_planning as up
 import unified_planning.engines as engines
 from unified_planning.exceptions import UPProblemDefinitionError
-from unified_planning.engines.mixins.compiler import CompilationKind, CompilerMixin
 from unified_planning.engines.results import CompilerResult
 from unified_planning.engines.compilers.grounder import Grounder
-from unified_planning.model import InstantaneousAction, Action, FNode
-from unified_planning.model.walkers import Substituter, ExpressionQuantifiersRemover
+from unified_planning.model import InstantaneousAction, FNode
 from unified_planning.model.walkers import FreeVarsExtractor
 from unified_planning.model import Problem, ProblemKind
 from unified_planning.model.operators import OperatorKind
 from unified_planning.model.walkers.state_evaluator import StateEvaluator
-from unified_planning.model.state import State, UPState
+from unified_planning.model.state import UPState
 from unified_planning.environment import Environment
-from unified_planning.shortcuts import *
-from functools import partial
+from unified_planning.shortcuts import BoolType, Effect, Int, Minus, IntType
 from unified_planning.engines.compilers.utils import (
     lift_action_instance,
 )
+from numeric_tcore.constraints import *
 from typing import List, Dict, Tuple
 from numeric_tcore.numeric_regression import regression
 from numeric_tcore.compilation_helper import *
 from numeric_tcore.achievers_helper import *
-from numeric_tcore.parsing_extensions import PDDL3Problem, Within
+from numeric_tcore.parsing_extensions import PDDL3Problem, AlwaysWithin
+from unified_planning.model.walkers import Substituter, ExpressionQuantifiersRemover
 
 NUM = "num"
 CONSTRAINTS = "constraints"
@@ -70,32 +69,19 @@ class NumericCompiler:
         logger = Logger()
 
         time_constraints = pddl3_problem.time_constraints
-        problem: Problem = pddl3_problem.problem
 
-        self.env = problem.environment
+        self.ground_problem = pddl3_problem.ground_problem.clone()
+        self.ground_problem.name = f"compiled_{self.ground_problem.name}"
+        self.env = pddl3_problem.env
+
         quantifier_remover = ExpressionQuantifiersRemover(self.env)
 
-        self._grounding_result: CompilerResult = Grounder().compile(
-            problem, CompilationKind.GROUNDING
-        )
+        qualitative_constraints = pddl3_problem.qualitative_constraints
 
-        self.ground_problem: Problem = self._grounding_result.problem.clone()
-        if self.ground_problem is None:
-            raise Exception(GROUNDING_ERROR_MSG)
-        
         self.achiever_helper = AchieverHelper(self.achiever_strategy, self.ground_problem)
-        self.ground_problem.name = f"compiled_{problem.name}"
+        
         actions = self.ground_problem.actions
         initial_state = self.ground_problem.initial_values
-
-        qualitative_constraints = build_constraint_list(quantifier_remover, self.ground_problem)
-        # create a list that contains trajectory_constraints
-        # trajectory_constraints can contain quantifiers that need to be removed
-        if len(qualitative_constraints) == 1 and (qualitative_constraints[0] == True or qualitative_constraints[0] == TRUE()):
-            qualitative_constraints = []
-
-        if len(qualitative_constraints) == 0 and len(time_constraints) == 0:
-            raise Exception("No trajectory constraints to remove")
 
         # REGISTER CONSTRAINTS IN LOGGER #
         logger.qualitative_constraints = [c for c in qualitative_constraints]
@@ -347,17 +333,17 @@ class NumericCompiler:
 
     def _evaluate_constraint(self, state_evaluator: StateEvaluator, constr: FNode, initial_state: UPState):
         phi_init_value = state_evaluator.evaluate(constr.args[0], initial_state)
-        if constr.is_always():
+        if type(constr) == Always:
             self._check_itc_violated_in_init(phi_init_value.is_false(), "always")
             return None, phi_init_value
-        elif constr.is_sometime():
+        elif type(constr) == Sometime:
             return HOLD, phi_init_value
-        elif constr.is_at_most_once():
+        elif type(constr) == AtMostOnce:
             return SEEN_PHI, phi_init_value
-        elif constr.is_sometime_after():
+        elif type(constr) == SometimeAfter:
             psi_init_value = state_evaluator.evaluate(constr.args[1], initial_state)
             return HOLD, psi_init_value or not phi_init_value
-        elif constr.is_sometime_before():
+        elif type(constr) == SometimeBefore():
             self._check_itc_violated_in_init(phi_init_value.is_true(), "sometime-before")
             psi_init_value = state_evaluator.evaluate(constr.args[1], initial_state)
             return SEEN_PSI, psi_init_value
@@ -419,7 +405,13 @@ class NumericCompiler:
         assert isinstance(env.free_vars_extractor, FreeVarsExtractor)
         var2constraints_dict = {}
         for c in C:
-            for atom in env.free_vars_extractor.get(c):
+            if type(c) in {Sometime, Always, AtMostOnce}:
+                atoms = env.free_vars_extractor.get(c.formula)
+            elif type(c) in {SometimeBefore, SometimeAfter}:
+                atoms = env.free_vars_extractor.get(c.formula1) + env.free_vars_extractor.get(c.formula2)
+            else:
+                raise Exception("Unsupported constraint: " + str(c))
+            for atom in atoms:
                 conditions_list = var2constraints_dict.setdefault(atom, [])
                 conditions_list.append(c)
         return var2constraints_dict

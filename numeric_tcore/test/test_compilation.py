@@ -1,7 +1,4 @@
 import pytest
-from unified_planning.shortcuts import *
-from unified_planning.model import Problem
-from unified_planning.io.pddl_reader import PDDLReader
 from numeric_tcore.compilation import NumericCompiler
 import pkg_resources
 from numeric_tcore.achievers_helper import *

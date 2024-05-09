@@ -1,6 +1,7 @@
-from unified_planning.shortcuts import *
+from unified_planning.shortcuts import FNode, And, Or, Not, LE, Plus, GE, LT, Equals, FluentExp, Fluent, Problem
 from unified_planning.model.walkers import ExpressionQuantifiersRemover as QuantifiersRemover
-from numeric_tcore.parsing_extensions import *
+from numeric_tcore.constraints import *
+from typing import List
 
 class Logger:
     def __init__(self):
@@ -80,14 +81,6 @@ class Logger:
         return msg
 
 
-def build_constraint_list(quantifier_remover: QuantifiersRemover, problem: Problem) -> List[FNode]:
-        constraints = problem.trajectory_constraints
-        C_temp = (And(constraints)).simplify()
-        C_list = C_temp.args if C_temp.is_and() else [C_temp]
-        C_to_return = (And(_remove_quantifier(quantifier_remover, C_list, problem))).simplify()
-        return list(C_to_return.args) if C_to_return.is_and() else [C_to_return]
-
-
 def normalize_time_constraints(quantifier_remover: QuantifiersRemover, time_constraints: List, time_fluent: Fluent, problem: Problem):
     if len(time_constraints) > 0:
         time_constraints = ground_time_constraints(quantifier_remover, time_constraints, problem)
@@ -117,14 +110,6 @@ def ground_time_constraints(quantifier_remover: QuantifiersRemover, time_constra
             
     return ground_time_constraints
 
-def _remove_quantifier(quantifier_remover: QuantifiersRemover, C: list, problem: Problem):
-        new_C = []
-        for c in C:
-            assert c.node_type is not OperatorKind.EXISTS
-            new_C.append(
-                quantifier_remover.remove_quantifiers(c, problem)
-            )
-        return new_C
 
 def get_landmark_constraints(C: List[FNode]):
     for constr in C:
