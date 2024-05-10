@@ -71,6 +71,9 @@ def build_constraint_list(quantifier_remover: QuantifiersRemover, problem: Probl
         C_to_return = (And(_remove_quantifier(quantifier_remover, C_list, problem))).simplify()
         constraints_list =  list(C_to_return.args) if C_to_return.is_and() else [C_to_return]
 
+        if len(constraints_list) == 1 and (constraints_list[0] == True or constraints_list[0] == TRUE()):
+            return []
+
         new_constraint_list = []
         for c in constraints_list:
             if c.is_always():
@@ -83,6 +86,8 @@ def build_constraint_list(quantifier_remover: QuantifiersRemover, problem: Probl
                 new_constraint_list.append(SometimeBefore(c.args[0], c.args[1]))
             elif c.is_sometime_after():
                 new_constraint_list.append(SometimeAfter(c.args[0], c.args[1]))
+            elif c.is_true():
+                new_constraint_list.append(TRUE())
             else:
                 raise Exception("Unsupported constraint: " + str(c))
 
@@ -116,8 +121,6 @@ class PDDL3Problem(AbstractProblem):
         qualitative_constraints = build_constraint_list(quantifier_remover, self.ground_problem)
         # create a list that contains trajectory_constraints
         # trajectory_constraints can contain quantifiers that need to be removed
-        if len(qualitative_constraints) == 1 and (qualitative_constraints[0] == True or qualitative_constraints[0] == TRUE()):
-            qualitative_constraints = []
 
         if len(qualitative_constraints) == 0 and len(time_constraints) == 0:
             raise Exception("No trajectory constraints to remove")

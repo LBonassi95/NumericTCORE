@@ -189,30 +189,28 @@ class NumericCompiler:
         new_E = []
         for c in relevant_constraints:
             
-            if isinstance(c, AlwaysWithin):
+            if type(c) == AlwaysWithin:
                 self._compile_always_within(a, c, new_P, new_E)
+
+            elif type(c) == Always:
+                self._compile_always(a, c, new_P)
+
+            elif type(c) == AtMostOnce:
+                self._compile_amo(a, c, new_P, new_E)
+
+            elif type(c) == SometimeBefore:
+                self._compile_sb(a, c, new_P, new_E)
+
+            elif type(c) == Sometime:
+                self._compile_sometime(a, c, new_E)
+
+            elif type(c) == SometimeAfter:
+                self._compile_sa(a, c, new_E)
+            
             else:
-                assert isinstance(c, FNode)
-
-                if c.is_always():
-                    self._compile_always(a, c, new_P)
-
-                elif c.is_at_most_once():
-                    self._compile_amo(a, c, new_P, new_E)
-
-                elif c.is_sometime_before():
-                    self._compile_sb(a, c, new_P, new_E)
-
-                elif c.is_sometime():
-                    self._compile_sometime(a, c, new_E)
-
-                elif c.is_sometime_after():
-                    self._compile_sa(a, c, new_E)
-                
-                else:
-                    raise Exception(
-                        UNKNOWN_CONSTRAINT_ERROR_MSG.format(c)
-                    )
+                raise Exception(
+                    UNKNOWN_CONSTRAINT_ERROR_MSG.format(c)
+                )
                 
         return new_P, new_E
 
@@ -244,9 +242,9 @@ class NumericCompiler:
 
 
 
-    def _compile_sa(self, a: InstantaneousAction, c: FNode, new_E: list):
-        phi = c.args[0]
-        psi = c.args[1]
+    def _compile_sa(self, a: InstantaneousAction, c: SometimeAfter, new_E: list):
+        phi = c.formula1
+        psi = c.formula2
         hold_c = self._monitoring_atom_dict[c]
         if self.achiever_helper.isAchiever(a, And([phi, Not(psi)])):
             r_phi_and_not_psi_a = regression(And([phi, Not(psi)]), a).simplify()
@@ -255,16 +253,16 @@ class NumericCompiler:
             r_psi_a = regression(psi, a).simplify()
             self._add_cond_eff(new_E, r_psi_a, hold_c)
 
-    def _compile_sometime(self, a: InstantaneousAction, c: FNode, new_E: list):
-        phi = c.args[0]
+    def _compile_sometime(self, a: InstantaneousAction, c: Sometime, new_E: list):
+        phi = c.formula
         hold_c = self._monitoring_atom_dict[c]
         if self.achiever_helper.isAchiever(a, phi):
             r_phi_a = regression(phi, a).simplify()
             self._add_cond_eff(new_E, r_phi_a, hold_c)
 
-    def _compile_sb(self, a: InstantaneousAction, c: FNode, new_P: list, new_E: list):
-        phi = c.args[0]
-        psi = c.args[1]
+    def _compile_sb(self, a: InstantaneousAction, c: SometimeBefore, new_P: list, new_E: list):
+        phi = c.formula1
+        psi = c.formula2
         seen_psi = self._monitoring_atom_dict[c]
         
         if self.achiever_helper.isAchiever(a, phi):
@@ -275,8 +273,8 @@ class NumericCompiler:
             self._add_cond_eff(new_E, r_psi_a, seen_psi)
 
 
-    def _compile_amo(self, a: InstantaneousAction, c: FNode, new_P: list, new_E: list):
-        phi = c.args[0]
+    def _compile_amo(self, a: InstantaneousAction, c: AtMostOnce, new_P: list, new_E: list):
+        phi = c.formula
         seen_phi = self._monitoring_atom_dict[c]
         if self.achiever_helper.isAchiever(a, phi):
             r_phi_a = (regression(phi, a)).simplify()
@@ -284,8 +282,8 @@ class NumericCompiler:
             self._add_cond_eff(new_E, r_phi_a, seen_phi)
             
     #@profile
-    def _compile_always(self, a: InstantaneousAction, c: FNode, new_P: list):
-        phi = c.args[0]
+    def _compile_always(self, a: InstantaneousAction, c: Always, new_P: list):
+        phi = c.formula
         if self.achiever_helper.isAchiever(a, Not(phi)):
             new_P.append((regression(phi, a)).simplify())
 
@@ -332,7 +330,17 @@ class NumericCompiler:
                 "PROBLEM NOT SOLVABLE: an {} is violated in the initial state".format(constraint))
 
     def _evaluate_constraint(self, state_evaluator: StateEvaluator, constr: FNode, initial_state: UPState):
-        phi_init_value = state_evaluator.evaluate(constr.args[0], initial_state)
+
+        if type(constr) in {Always, Sometime, AtMostOnce}:
+            phi_init_value = state_evaluator.evaluate(constr.formula, initial_state)
+        
+        elif type(constr) in {SometimeBefore, SometimeAfter}:
+            phi_init_value = state_evaluator.evaluate(constr.formula1, initial_state)
+            psi_init_value = state_evaluator.evaluate(constr.formula2, initial_state)
+
+        else:
+            raise Exception("Unsupported constraint: " + str(constr)) 
+        
         if type(constr) == Always:
             self._check_itc_violated_in_init(phi_init_value.is_false(), "always")
             return None, phi_init_value
@@ -341,17 +349,11 @@ class NumericCompiler:
         elif type(constr) == AtMostOnce:
             return SEEN_PHI, phi_init_value
         elif type(constr) == SometimeAfter:
-            psi_init_value = state_evaluator.evaluate(constr.args[1], initial_state)
             return HOLD, psi_init_value or not phi_init_value
-        elif type(constr) == SometimeBefore():
-            self._check_itc_violated_in_init(phi_init_value.is_true(), "sometime-before")
-            psi_init_value = state_evaluator.evaluate(constr.args[1], initial_state)
-            return SEEN_PSI, psi_init_value
         else:
-            raise UPProblemDefinitionError(
-                        "The constraint {} is not supported by the compiler"
-                        .format(str(constr))
-                    )
+            assert type(constr) == SometimeBefore
+            self._check_itc_violated_in_init(phi_init_value.is_true(), "sometime-before")
+            return SEEN_PSI, psi_init_value
 
     def _get_monitoring_atoms(self, state_evaluator: StateEvaluator, C: list[FNode], I: UPState):
         monitoring_atoms = []
@@ -408,7 +410,7 @@ class NumericCompiler:
             if type(c) in {Sometime, Always, AtMostOnce}:
                 atoms = env.free_vars_extractor.get(c.formula)
             elif type(c) in {SometimeBefore, SometimeAfter}:
-                atoms = env.free_vars_extractor.get(c.formula1) + env.free_vars_extractor.get(c.formula2)
+                atoms = env.free_vars_extractor.get(c.formula1) | env.free_vars_extractor.get(c.formula2)
             else:
                 raise Exception("Unsupported constraint: " + str(c))
             for atom in atoms:

@@ -1,9 +1,4 @@
 from unified_planning.shortcuts import FNode
-from typing import Tuple
-
-class Constraint:
-    def __init__(self, args: Tuple[FNode]) -> None:
-        self.args = args
 
 class Sometime:
 
@@ -60,7 +55,7 @@ class AtEnd:
 
 class Within:
 
-    def __init__(self, t, formula: FNode) -> None:
+    def __init__(self, t: int, formula: FNode) -> None:
         self.t = t
         self.formula = formula
 
@@ -70,7 +65,7 @@ class Within:
     
 class HoldAfter:
 
-    def __init__(self, t, formula: FNode) -> None:
+    def __init__(self, t: int, formula: FNode) -> None:
         self.t = t
         self.formula = formula
 

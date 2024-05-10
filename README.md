@@ -15,9 +15,9 @@ Numeric Tcore uses the following external libraries:
 
 Use the following commands to install Numeric Tcore. We suggest starting with a fresh Python environment (we tested with Python 3.10).
 
-1. Install dependencies:
+1. Install dependencies: # TODO UPDATE THE UP VERSION!
 ```
-pip install click sympy unified_planning==1.0.0.29.dev1 --no-cache-dir
+pip install click sympy unified-planning==1.1.0 --no-cache-dir
 ```
 
 2. From the "NumericTCORE" directory, install the package with:

@@ -35,15 +35,15 @@ class Logger:
         always_within = 0
         for c in self.qualitative_constraints:
             assert isinstance(c, FNode)
-            if c.is_always():
+            if type(c) == Always:
                 always += 1
-            elif c.is_sometime():
+            elif type(c) == Sometime:
                 sometime += 1
-            elif c.is_at_most_once():
+            elif type(c) == AtMostOnce:
                 at_most_once += 1
-            elif c.is_sometime_before():
+            elif type(c) == SometimeBefore:
                 sometime_before += 1
-            elif c.is_sometime_after():
+            elif type(c) == SometimeAfter:
                 sometime_after += 1
             else:
                 raise Exception("Unknown constraint type {}".format(c))
@@ -113,7 +113,7 @@ def ground_time_constraints(quantifier_remover: QuantifiersRemover, time_constra
 
 def get_landmark_constraints(C: List[FNode]):
     for constr in C:
-        if constr.is_sometime() or constr.is_sometime_after():
+        if type(constr) in {Sometime, SometimeAfter}:
             yield constr
 
 
