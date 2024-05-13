@@ -19,7 +19,7 @@ def test_base_compilation_naive():
     assert logger.new_fluents == 2
     assert logger.new_effects == 12
     assert logger.new_preconditions == 2
-
+    problem = parse_pddl3(domain_path, problem_path)
     compiler = NumericCompiler(achiever_strategy=DELTA)
     _, logger = compiler.compile(problem)
     assert logger.new_effects == 7
@@ -35,6 +35,7 @@ def test_compilation_sailing():
     assert logger.new_fluents == 10
     assert logger.new_effects == 510
     assert logger.new_preconditions == 459
+    problem = parse_pddl3(domain_path, problem_path)
     compiler = NumericCompiler(achiever_strategy=DELTA)
     _, logger = compiler.compile(problem)
     assert logger.new_effects == 78
@@ -51,6 +52,7 @@ def test_compilation_sailing_2():
     assert logger.new_fluents == 5
     assert logger.new_effects == 225
     assert logger.new_preconditions == 0
+    problem = parse_pddl3(domain_path, problem_path)
     compiler = NumericCompiler(achiever_strategy=DELTA)
     _, logger = compiler.compile(problem)
     assert logger.new_effects == 55
@@ -67,6 +69,7 @@ def test_compilation_sailing_3():
     assert logger.new_fluents == 2
     assert logger.new_effects == 16
     assert logger.new_preconditions == 7
+    problem = parse_pddl3(domain_path, problem_path)
     compiler = NumericCompiler(achiever_strategy=DELTA)
     _, logger = compiler.compile(problem)
     assert logger.new_effects == 15
@@ -90,6 +93,7 @@ def test_compilation_zeno_logger():
     assert logger.new_fluents == 3
     assert logger.new_effects == 258
     assert logger.new_preconditions == 258
+    problem = parse_pddl3(domain_path, problem_path)
     compiler = NumericCompiler(achiever_strategy=DELTA)
     _, logger = compiler.compile(problem)
     assert logger.new_effects == 110

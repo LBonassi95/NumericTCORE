@@ -96,17 +96,17 @@ def ground_time_constraints(quantifier_remover: QuantifiersRemover, time_constra
     ground_time_constraints = []
     for c in time_constraints:
         if isinstance(c, Within):
-            ground_time_constraints.append(Within(c.t, quantifier_remover.remove_quantifiers(c.formula, problem)))
+            ground_time_constraints.append(Within(c.t, quantifier_remover.remove_quantifiers(c.phi, problem)))
         elif isinstance(c, HoldAfter):
-            ground_time_constraints.append(HoldAfter(c.t, quantifier_remover.remove_quantifiers(c.formula, problem)))
+            ground_time_constraints.append(HoldAfter(c.t, quantifier_remover.remove_quantifiers(c.phi, problem)))
         elif isinstance(c, HoldDuring):
-            ground_time_constraints.append(HoldDuring(c.u1, c.u2, quantifier_remover.remove_quantifiers(c.formula, problem)))
+            ground_time_constraints.append(HoldDuring(c.u1, c.u2, quantifier_remover.remove_quantifiers(c.phi, problem)))
         elif isinstance(c, AlwaysWithin):
             ground_time_constraints.append(AlwaysWithin(c.t,
-                                                                quantifier_remover.remove_quantifiers(c.formula1, problem), 
-                                                                quantifier_remover.remove_quantifiers(c.formula2, problem)))
+                                                                quantifier_remover.remove_quantifiers(c.phi, problem), 
+                                                                quantifier_remover.remove_quantifiers(c.psi, problem)))
         elif isinstance(c, AtEnd):
-            ground_time_constraints.append(AtEnd(quantifier_remover.remove_quantifiers(c.formula, problem)))
+            ground_time_constraints.append(AtEnd(quantifier_remover.remove_quantifiers(c.phi, problem)))
             
     return ground_time_constraints
 
@@ -122,21 +122,21 @@ def reformulate_time_constraints(time_constraints: List, time: Fluent):
     at_end_constraints = []
     for constr in time_constraints:
         if isinstance(constr, Within): 
-            arg = And(constr.formula, LE(FluentExp(time), constr.t))
+            arg = And(constr.phi, LE(FluentExp(time), constr.t))
             qualitative_constraints.append(Sometime(arg))
         elif isinstance(constr, HoldAfter):
             arg1 = Equals(FluentExp(time), Plus(constr.t, 1))
-            arg2 = constr.formula
+            arg2 = constr.phi
             qualitative_constraints.append(SometimeAfter(arg1, arg2))
-            arg = Or(Not(LE(FluentExp(time), constr.t)), constr.formula)
+            arg = Or(Not(LE(FluentExp(time), constr.t)), constr.phi)
             at_end_constraints.append(AtEnd(arg))
         elif isinstance(constr, HoldDuring):
-            arg = Or(Not(And(GE(FluentExp(time), constr.u1), LT(FluentExp(time), constr.u2))), constr.formula)
+            arg = Or(Not(And(GE(FluentExp(time), constr.u1), LT(FluentExp(time), constr.u2))), constr.phi)
             qualitative_constraints.append(Always(arg))
-            arg = Or(Not(LE(FluentExp(time), constr.u1)), constr.formula)
+            arg = Or(Not(LE(FluentExp(time), constr.u1)), constr.phi)
             at_end_constraints.append(AtEnd(arg))
         elif isinstance(constr, AtEnd):
-            at_end_constraints.append(AtEnd(constr.formula))
+            at_end_constraints.append(AtEnd(constr.phi))
              
     return qualitative_constraints, at_end_constraints
 

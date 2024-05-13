@@ -114,7 +114,7 @@ class PDDL3Problem(AbstractProblem):
     def __init__(self, problem: Problem, time_constraints: List[FNode]) -> None:
         self.time_constraints = time_constraints
         # Preprocess Other Constraints
-        self.problem = problem
+        self.problem = problem.clone()
         self.env = problem.environment
         quantifier_remover = QuantifiersRemover(self.env)
         self.ground_problem = self.get_ground_problem()
@@ -147,4 +147,7 @@ class PDDL3Problem(AbstractProblem):
         if ground_problem is None:
             raise Exception(GROUNDING_ERROR_MSG)
         return ground_problem
+
+    def get_env(self):
+        return self.env
     

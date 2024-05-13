@@ -72,7 +72,7 @@ class NumericCompiler:
 
         self.ground_problem = pddl3_problem.ground_problem.clone()
         self.ground_problem.name = f"compiled_{self.ground_problem.name}"
-        self.env = pddl3_problem.env
+        self.env = pddl3_problem.get_env()
 
         quantifier_remover = ExpressionQuantifiersRemover(self.env)
 
@@ -95,7 +95,7 @@ class NumericCompiler:
         ##########################
 
         new_qualitative_constraints, always_within, at_end = normalize_time_constraints(quantifier_remover, time_constraints, self.time_fluent, self.ground_problem)
-        qualitative_constraints += new_qualitative_constraints
+        qualitative_constraints = pddl3_problem.qualitative_constraints + new_qualitative_constraints
         
         self.var2constraints_dict = self._build_var2constraints_dict(self.env, qualitative_constraints)
         state_evaluator = StateEvaluator(self.ground_problem)
@@ -109,7 +109,7 @@ class NumericCompiler:
 
         ############# NEW GOAL CREATION #############
         goal_prime = And([self._monitoring_atom_dict[c] for c in get_landmark_constraints(qualitative_constraints)] + 
-                         [ae.formula for ae in at_end] + 
+                         [ae.phi for ae in at_end] + 
                          [Equals(self._monitoring_atom_dict[c], -1) for c in always_within])
         #############################################
 
@@ -222,8 +222,8 @@ class NumericCompiler:
 
     def _compile_always_within(self, a: InstantaneousAction, c: AlwaysWithin, new_P: list, new_E: list):
         t = c.t
-        phi = c.formula1
-        psi = c.formula2
+        phi = c.phi
+        psi = c.psi
         mark = self._monitoring_atom_dict[c]
         
         pre = Or(Equals(mark, -1), LT(Minus(FluentExp(self.time_fluent), mark), t))
@@ -243,8 +243,8 @@ class NumericCompiler:
 
 
     def _compile_sa(self, a: InstantaneousAction, c: SometimeAfter, new_E: list):
-        phi = c.formula1
-        psi = c.formula2
+        phi = c.phi
+        psi = c.psi
         hold_c = self._monitoring_atom_dict[c]
         if self.achiever_helper.isAchiever(a, And([phi, Not(psi)])):
             r_phi_and_not_psi_a = regression(And([phi, Not(psi)]), a).simplify()
@@ -254,15 +254,15 @@ class NumericCompiler:
             self._add_cond_eff(new_E, r_psi_a, hold_c)
 
     def _compile_sometime(self, a: InstantaneousAction, c: Sometime, new_E: list):
-        phi = c.formula
+        phi = c.phi
         hold_c = self._monitoring_atom_dict[c]
         if self.achiever_helper.isAchiever(a, phi):
             r_phi_a = regression(phi, a).simplify()
             self._add_cond_eff(new_E, r_phi_a, hold_c)
 
     def _compile_sb(self, a: InstantaneousAction, c: SometimeBefore, new_P: list, new_E: list):
-        phi = c.formula1
-        psi = c.formula2
+        phi = c.phi
+        psi = c.psi
         seen_psi = self._monitoring_atom_dict[c]
         
         if self.achiever_helper.isAchiever(a, phi):
@@ -274,7 +274,7 @@ class NumericCompiler:
 
 
     def _compile_amo(self, a: InstantaneousAction, c: AtMostOnce, new_P: list, new_E: list):
-        phi = c.formula
+        phi = c.phi
         seen_phi = self._monitoring_atom_dict[c]
         if self.achiever_helper.isAchiever(a, phi):
             r_phi_a = (regression(phi, a)).simplify()
@@ -283,7 +283,7 @@ class NumericCompiler:
             
     #@profile
     def _compile_always(self, a: InstantaneousAction, c: Always, new_P: list):
-        phi = c.formula
+        phi = c.phi
         if self.achiever_helper.isAchiever(a, Not(phi)):
             new_P.append((regression(phi, a)).simplify())
 
@@ -332,11 +332,11 @@ class NumericCompiler:
     def _evaluate_constraint(self, state_evaluator: StateEvaluator, constr: FNode, initial_state: UPState):
 
         if type(constr) in {Always, Sometime, AtMostOnce}:
-            phi_init_value = state_evaluator.evaluate(constr.formula, initial_state)
+            phi_init_value = state_evaluator.evaluate(constr.phi, initial_state)
         
         elif type(constr) in {SometimeBefore, SometimeAfter}:
-            phi_init_value = state_evaluator.evaluate(constr.formula1, initial_state)
-            psi_init_value = state_evaluator.evaluate(constr.formula2, initial_state)
+            phi_init_value = state_evaluator.evaluate(constr.phi, initial_state)
+            psi_init_value = state_evaluator.evaluate(constr.psi, initial_state)
 
         else:
             raise Exception("Unsupported constraint: " + str(constr)) 
@@ -380,8 +380,8 @@ class NumericCompiler:
         always_within_counter = 0
         initial_marks_value = {}
         for aw in always_within:
-            phi_init_value = state_evaluator.evaluate(aw.formula1, I)
-            psi_init_value = state_evaluator.evaluate(aw.formula2, I)
+            phi_init_value = state_evaluator.evaluate(aw.phi, I)
+            psi_init_value = state_evaluator.evaluate(aw.psi, I)
             
             start_with_mark = phi_init_value.is_true() and not psi_init_value.is_true()
             fluent = Fluent(f"mark{SEPARATOR}{always_within_counter}", IntType())
@@ -408,9 +408,9 @@ class NumericCompiler:
         var2constraints_dict = {}
         for c in C:
             if type(c) in {Sometime, Always, AtMostOnce}:
-                atoms = env.free_vars_extractor.get(c.formula)
+                atoms = env.free_vars_extractor.get(c.phi)
             elif type(c) in {SometimeBefore, SometimeAfter}:
-                atoms = env.free_vars_extractor.get(c.formula1) | env.free_vars_extractor.get(c.formula2)
+                atoms = env.free_vars_extractor.get(c.phi) | env.free_vars_extractor.get(c.psi)
             else:
                 raise Exception("Unsupported constraint: " + str(c))
             for atom in atoms:

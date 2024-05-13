@@ -55,6 +55,7 @@ def test_compilation_tpp_delta_quantitative_first_order_logger():
     assert logger.new_effect_size == 1540
     assert logger.new_preconditions == 100
     assert logger.new_precondition_size == 760
+    problem = parse_pddl3(domain_path, problem_path)
     compiler = NumericCompiler(achiever_strategy=DELTA)
     _, logger = compiler.compile(problem)
     assert logger.new_effects == 180
