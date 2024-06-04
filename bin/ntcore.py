@@ -20,7 +20,7 @@ def main(domain, problem, output, achiever_strategy, verbose):
 
     compiler = NumericCompiler(achiever_strategy=achiever_strategy) 
     #tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
-    new_problem, logger = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
+    new_problem, logger = compiler.compile(problem)
 
     if verbose:
         print(logger.get_log())
