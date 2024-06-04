@@ -19,6 +19,7 @@ From the "NumericTCORE" directory, install the package with:
 ```
 pip install . --no-cache-dir
 ```
+The additional libraries will be installed automatically.
 
 ## Running the compilation
 
