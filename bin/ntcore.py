@@ -25,7 +25,6 @@ def main(domain, problem, output, achiever_strategy, verbose):
     if verbose:
         print(logger.get_log())
 
-    new_problem.name = "CompiledProblem"
     writer = PDDLWriter(new_problem, needs_requirements=False)
     writer.write_domain(os.path.join(output, 'compiled_dom.pddl'))
     writer.write_problem(os.path.join(output, 'compiled_prob.pddl'))

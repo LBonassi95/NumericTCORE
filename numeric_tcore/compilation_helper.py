@@ -34,7 +34,6 @@ class Logger:
         within = 0
         always_within = 0
         for c in self.qualitative_constraints:
-            assert isinstance(c, FNode)
             if type(c) == Always:
                 always += 1
             elif type(c) == Sometime:
