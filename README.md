@@ -65,4 +65,3 @@ While inside the NumericTCORE folder, to compile the first instance of counters 
   publisher    = {{AAAI} Press},
   year         = {2024}
 }
-```
