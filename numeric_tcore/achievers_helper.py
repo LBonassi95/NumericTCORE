@@ -1,6 +1,6 @@
 from numeric_tcore.numeric_regression import regression, gamma
 from unified_planning.model.fnode import FNode
-from unified_planning.shortcuts import *
+from unified_planning.shortcuts import GT, GE, TRUE, FALSE, Fluent, RealType, FluentExp
 from unified_planning.model.walkers import LinearChecker, FreeVarsExtractor, Substituter, Simplifier, Nnf
 from sympy.parsing.sympy_parser import parse_expr, standard_transformations
 from unified_planning.environment import get_environment

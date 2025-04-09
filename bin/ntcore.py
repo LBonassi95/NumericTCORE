@@ -18,15 +18,13 @@ from numeric_tcore.parsing_extensions import *
 def main(domain, problem, output, achiever_strategy, verbose):
     problem = parse_pddl3(domain, problem)
 
-    compiler = NumericCompiler(achiever_computation_strategy=achiever_strategy) 
+    compiler = NumericCompiler(achiever_strategy=achiever_strategy) 
     #tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
-    compilation_result, logger = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
-    new_problem = compilation_result.problem
+    new_problem, logger = compiler.compile(problem)
 
     if verbose:
         print(logger.get_log())
 
-    new_problem.name = "CompiledProblem"
     writer = PDDLWriter(new_problem, needs_requirements=False)
     writer.write_domain(os.path.join(output, 'compiled_dom.pddl'))
     writer.write_problem(os.path.join(output, 'compiled_prob.pddl'))

@@ -1,10 +1,9 @@
 import pytest
 import pkg_resources
 from unified_planning.io.pddl_reader import PDDLReader
-from numeric_tcore.compilation import NumericCompiler, HOLD, SEEN_PSI, SEEN_PHI, SEPARATOR
-from unified_planning.shortcuts import *
-from unified_planning.model.walkers.state_evaluator import StateEvaluator
-from unified_planning.exceptions import UPProblemDefinitionError
+from numeric_tcore.compilation import NumericCompiler
+from numeric_tcore.constraints import *
+from unified_planning.shortcuts import Equals, UserType, Object, Fluent, RealType, BoolType, Plus, GE, Not
 
 agent = UserType('agent')
 flag = UserType('flag')

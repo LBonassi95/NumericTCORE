@@ -18,18 +18,14 @@ def test_compilation():
     problem_path = pkg_resources.resource_filename(__name__, 'pddl/flags/p_quantitative.pddl')
     problem = parse_pddl3(domain_path, problem_path)
     compiler = NumericCompiler() 
-    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
-    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
-    new_problem = compilation_result.problem
+    _, _ = compiler.compile(problem)
 
 def test_compilation_at_end():
     domain_path = pkg_resources.resource_filename(__name__, 'pddl/flags/domain.pddl')
     problem_path = pkg_resources.resource_filename(__name__, 'pddl/flags/p05.pddl')
     problem = parse_pddl3(domain_path, problem_path)
     compiler = NumericCompiler() 
-    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
-    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
-    new_problem = compilation_result.problem
+    _, _ = compiler.compile(problem)
 
 
 def test_compilation_tpp_delta_quantitative():
@@ -37,30 +33,35 @@ def test_compilation_tpp_delta_quantitative():
     problem_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/p02.pddl')
     problem = parse_pddl3(domain_path, problem_path)
     compiler = NumericCompiler() 
-    compiler.achiever_computation_strategy = DELTA
-    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
-    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
-    new_problem = compilation_result.problem
+    compiler.achiever_strategy = DELTA
+    _, _ = compiler.compile(problem)
 
 def test_compilation_tpp_delta_quantitative_first_order():
     domain_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/domain.pddl')
     problem_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/p03.pddl')
     problem = parse_pddl3(domain_path, problem_path)
     compiler = NumericCompiler() 
-    compiler.achiever_computation_strategy = DELTA
-    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
-    compilation_result, _ = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
-    new_problem = compilation_result.problem
+    compiler.achiever_strategy = DELTA
+    _, _ = compiler.compile(problem)
 
 def test_compilation_tpp_delta_quantitative_first_order_logger():
     domain_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/domain.pddl')
     problem_path = pkg_resources.resource_filename(__name__, 'pddl/tpp/p03.pddl')
     problem = parse_pddl3(domain_path, problem_path)
-    compiler = NumericCompiler() 
-    compiler.achiever_computation_strategy = DELTA
-    tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING
-    compilation_result, logger = compiler.compile(problem, CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING)
-    new_problem = compilation_result.problem
+    compiler = NumericCompiler(achiever_strategy=NAIVE) 
+    _, logger = compiler.compile(problem)
+    assert logger.new_fluents == 4
+    assert logger.new_effects == 300
+    assert logger.new_effect_size == 1540
+    assert logger.new_preconditions == 100
+    assert logger.new_precondition_size == 760
+    problem = parse_pddl3(domain_path, problem_path)
+    compiler = NumericCompiler(achiever_strategy=DELTA)
+    _, logger = compiler.compile(problem)
+    assert logger.new_effects == 180
+    assert logger.new_effect_size == 880
+    assert logger.new_preconditions == 100
+    assert logger.new_precondition_size == 760
 
 
 if __name__ == '__main__':

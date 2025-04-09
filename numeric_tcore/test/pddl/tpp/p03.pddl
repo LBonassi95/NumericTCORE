@@ -81,9 +81,9 @@
 
 
 (:constraints (and 
-; (within 10 (exists (?g - goods)  (>= (bought ?g) (request ?g))))
-; (hold-after 10 (exists (?g - goods)  (>= (bought ?g) (request ?g))))
-; (hold-during 10 15 (exists (?g - goods)  (>= (bought ?g) (request ?g))))
+(within 10 (exists (?g - goods)  (>= (bought ?g) (request ?g))))
+(hold-after 10 (exists (?g - goods)  (>= (bought ?g) (request ?g))))
+(hold-during 10 15 (exists (?g - goods)  (>= (bought ?g) (request ?g))))
 (always-within 10 (exists (?g - goods)  (>= (bought ?g) (request ?g))) (exists (?g - goods)  (>= (bought ?g) (request ?g))))
 )
 )

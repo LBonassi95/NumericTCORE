@@ -2,7 +2,8 @@ import pytest
 import pkg_resources
 from unified_planning.io.pddl_reader import PDDLReader
 from numeric_tcore.compilation import NumericCompiler, HOLD, SEEN_PSI, SEEN_PHI, SEPARATOR
-from unified_planning.shortcuts import *
+from unified_planning.shortcuts import Equals, TRUE, UserType, Object, Fluent, FluentExp, RealType, BoolType, Plus, GE, LE, Not, FALSE
+from numeric_tcore.constraints import *
 from unified_planning.model.walkers.state_evaluator import StateEvaluator
 from unified_planning.exceptions import UPProblemDefinitionError
 from unified_planning.model.state import State, UPState
