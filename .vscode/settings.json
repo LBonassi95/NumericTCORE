@@ -1,7 +1,0 @@
-{
-    "python.testing.pytestArgs": [
-        "numeric_tcore"
-    ],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
-}
