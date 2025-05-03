@@ -4,10 +4,27 @@ import pkg_resources
 from numeric_tcore.achievers_helper import *
 from numeric_tcore.parsing_extensions import *
 from numeric_tcore.compilation_helper import Logger
+from numeric_tcore.lifted_compilation import *
 
 
 def get_time_update_effects(logger: Logger):
     return logger.actions
+
+
+def test_lifted_compilation():
+    domain_path = pkg_resources.resource_filename(__name__, 'pddl/flags/domain.pddl')
+    problem_path = pkg_resources.resource_filename(__name__, 'pddl/flags/p01.pddl')
+    problem = parse_pddl3(domain_path, problem_path)
+    compiler = NumericLiftedCompiler() 
+    res = compiler.compile(problem)
+    # assert logger.new_fluents == 2
+    # assert logger.new_effects == 12
+    # assert logger.new_preconditions == 2
+    # problem = parse_pddl3(domain_path, problem_path)
+    # compiler = NumericCompiler(achiever_strategy=DELTA)
+    # _, logger = compiler.compile(problem)
+    # assert logger.new_effects == 7
+    # assert logger.new_preconditions == 1
 
 
 def test_base_compilation_naive():
