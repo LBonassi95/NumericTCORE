@@ -78,9 +78,12 @@ class NumericLiftedCompiler:
         self._monitoring_atom_dict = monitoring_atom_dict
 
         G_prime = And(*[self._monitoring_atom_dict[c] for c in get_landmark_constraints(C)])
+
+        end_fluent = Fluent("end_fluent", BoolType())
+        end_fluent_expr = FluentExp(end_fluent)
         
         E: List["up.model.effect.Effect"] = list()
-        P = list()
+        P = [Not(end_fluent_expr)]
         for c in C:
             assert isinstance(c, Constraint)
 
@@ -115,8 +118,6 @@ class NumericLiftedCompiler:
         
         
         end_action = InstantaneousAction("end_action")
-        end_fluent = Fluent("end_fluent", BoolType())
-        end_fluent_expr = FluentExp(end_fluent)
         for eff in E:
             end_action.effects.append(eff)
         for p in P:
