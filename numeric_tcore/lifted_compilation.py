@@ -58,7 +58,7 @@ class NumericLiftedCompiler:
         ] = {}
 
 
-    def compile(self, pddl3_problem: PDDL3Problem) -> CompilerResult:
+    def compile(self, pddl3_problem: PDDL3Problem) -> Problem:
         """
         Transforms a Lifted PDDL3 problem into a new Lifted problem without trajectory constraints. 
         """
@@ -138,6 +138,10 @@ class NumericLiftedCompiler:
 
         for fluent in monitoring_atoms + [end_fluent]:
             self._problem.add_fluent(fluent)
+
+        for c, atom in monitoring_atom_dict.items():
+            if type(c) == SometimeAfter:
+                self._problem.set_initial_value(atom, TRUE())
 
         G_new = (And(self._problem.goals, G_prime, end_fluent_expr)).simplify()
         self._problem.clear_goals()

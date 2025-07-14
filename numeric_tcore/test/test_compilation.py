@@ -17,14 +17,41 @@ def test_lifted_compilation():
     problem = parse_pddl3(domain_path, problem_path)
     compiler = NumericLiftedCompiler() 
     res = compiler.compile(problem)
-    # assert logger.new_fluents == 2
-    # assert logger.new_effects == 12
-    # assert logger.new_preconditions == 2
-    # problem = parse_pddl3(domain_path, problem_path)
-    # compiler = NumericCompiler(achiever_strategy=DELTA)
-    # _, logger = compiler.compile(problem)
-    # assert logger.new_effects == 7
-    # assert logger.new_preconditions == 1
+
+
+def test_lifted_compilation_sa():
+    domain_path = pkg_resources.resource_filename(__name__, 'pddl/rovers-propositional/domain.pddl')
+    problem_path = pkg_resources.resource_filename(__name__, 'pddl/rovers-propositional/p01.pddl')
+    problem = parse_pddl3(domain_path, problem_path)
+    compiler = NumericLiftedCompiler() 
+    res = compiler.compile(problem)
+
+    monitoring_atoms, _ = compiler._get_monitoring_atoms(problem.qualitative_constraints)
+    assert len(monitoring_atoms) == 5
+
+    hold_0 = Fluent("hold-0", typename=BoolType())()
+    assert hold_0 in res.initial_values.keys()
+    init_hold_0 = res.initial_values.get(hold_0)
+    assert init_hold_0 == TRUE()
+    for m in monitoring_atoms:
+        matom = m()
+        assert isinstance(matom, FNode)
+        if "hold-0" not in str(matom):
+            assert matom in res.initial_values.keys()
+            assert res.initial_values.get(matom) == FALSE()
+            assert not (res.initial_values.get(matom) == TRUE())
+            
+    end_fluent = Fluent("end_fluent", BoolType())
+    end_fluent_expr = FluentExp(end_fluent)
+
+    for a in res.actions:
+        assert Not(end_fluent_expr) in a.preconditions
+
+        if a.name == "end_action":
+            assert Effect(condition=TRUE(), fluent=end_fluent_expr, value=TRUE()) in a.effects
+        else:
+            assert Effect(condition=TRUE(), fluent=end_fluent_expr, value=TRUE()) not in a.effects
+
 
 
 def test_base_compilation_naive():
