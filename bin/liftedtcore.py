@@ -14,7 +14,7 @@ from numeric_tcore.parsing_extensions import *
 @click.argument('problem')
 @click.argument('output')
 def main(domain, problem, output):
-    problem = parse_pddl3(domain, problem)
+    problem = parse_pddl3(domain, problem, lifted=True)
 
     compiler = NumericLiftedCompiler()
     new_problem = compiler.compile(problem)

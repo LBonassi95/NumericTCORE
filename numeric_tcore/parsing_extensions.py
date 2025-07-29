@@ -67,11 +67,14 @@ def parse_pddl3(domain_path, problem_path, lifted = False):
         return PDDL3Problem(problem, quantitative_constrants)
 
 
-def build_constraint_list(quantifier_remover: QuantifiersRemover, problem: Problem) -> List[FNode]:
+def build_constraint_list(quantifier_remover: QuantifiersRemover, problem: Problem, lifted = False) -> List[FNode]:
         constraints = problem.trajectory_constraints
         C_temp = (And(constraints)).simplify()
         C_list = C_temp.args if C_temp.is_and() else [C_temp]
-        C_to_return = (And(_remove_quantifier(quantifier_remover, C_list, problem))).simplify()
+        if lifted:
+            C_to_return = (And(C_list)).simplify()
+        else:
+            C_to_return = (And(_remove_quantifier(quantifier_remover, C_list, problem))).simplify()
         constraints_list =  list(C_to_return.args) if C_to_return.is_and() else [C_to_return]
 
         if len(constraints_list) == 1 and (constraints_list[0] == True or constraints_list[0] == TRUE()):
@@ -120,7 +123,7 @@ class PDDL3LiftedProblem(AbstractProblem):
         self.problem = problem.clone()
         self.env = problem.environment
         quantifier_remover = QuantifiersRemover(self.env)
-        qualitative_constraints = build_constraint_list(quantifier_remover, self.problem)
+        qualitative_constraints = build_constraint_list(quantifier_remover, self.problem, lifted=True)
         # create a list that contains trajectory_constraints
         # trajectory_constraints can contain quantifiers that need to be removed
 

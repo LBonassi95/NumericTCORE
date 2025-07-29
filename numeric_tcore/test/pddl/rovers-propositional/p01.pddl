@@ -38,7 +38,7 @@
 ; (communicated_rock_data waypoint3)
 ; (communicated_image_data objective1 high_res)
 ))(:constraints (and 
-(sometime-after (at rover0 waypoint0) (at rover0 waypoint1))
+(sometime-after (exists (?w - waypoint) (at rover0 ?w)) (at rover0 waypoint1))
 (sometime-before (at rover0 waypoint0) (at rover0 waypoint1))
 (sometime (at rover0 waypoint0))
 (at-most-once (at rover0 waypoint0))

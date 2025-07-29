@@ -14,7 +14,7 @@ def get_time_update_effects(logger: Logger):
 def test_lifted_compilation():
     domain_path = pkg_resources.resource_filename(__name__, 'pddl/flags/domain.pddl')
     problem_path = pkg_resources.resource_filename(__name__, 'pddl/flags/p01.pddl')
-    problem = parse_pddl3(domain_path, problem_path)
+    problem = parse_pddl3(domain_path, problem_path, lifted = True)
     compiler = NumericLiftedCompiler() 
     res = compiler.compile(problem)
 
@@ -22,7 +22,7 @@ def test_lifted_compilation():
 def test_lifted_compilation_sa():
     domain_path = pkg_resources.resource_filename(__name__, 'pddl/rovers-propositional/domain.pddl')
     problem_path = pkg_resources.resource_filename(__name__, 'pddl/rovers-propositional/p01.pddl')
-    problem = parse_pddl3(domain_path, problem_path)
+    problem = parse_pddl3(domain_path, problem_path, lifted = True)
     compiler = NumericLiftedCompiler() 
     res = compiler.compile(problem)
 
