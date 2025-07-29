@@ -51,7 +51,7 @@ class ParserExtension:
         return em.create_node(node_type=OperatorKind.SOMETIME, args=tuple([TRUE()]))
     
 
-def parse_pddl3(domain_path, problem_path, lifted = False):
+def parse_pddl3(domain_path, problem_path, lifted = True):
     reader = PDDLReader()
     parser_extensions = ParserExtension()
     reader._trajectory_constraints["at-end"] = parser_extensions.parse_atend
@@ -61,6 +61,7 @@ def parse_pddl3(domain_path, problem_path, lifted = False):
     reader._trajectory_constraints["always-within"] = parser_extensions.parse_alwayswithin
     problem = reader.parse_problem(domain_path, problem_path)
     quantitative_constrants = parser_extensions.constraints
+    assert lifted == True
     if lifted:
         return PDDL3LiftedProblem(problem, quantitative_constrants)
     else:
@@ -74,7 +75,7 @@ def build_constraint_list(quantifier_remover: QuantifiersRemover, problem: Probl
         if lifted:
             C_to_return = (And(C_list)).simplify()
         else:
-            C_to_return = (And(_remove_quantifier(quantifier_remover, C_list, problem))).simplify()
+            raise Exception("Error in Lifted Compilation!")
         constraints_list =  list(C_to_return.args) if C_to_return.is_and() else [C_to_return]
 
         if len(constraints_list) == 1 and (constraints_list[0] == True or constraints_list[0] == TRUE()):
