@@ -51,7 +51,7 @@ class ParserExtension:
         return em.create_node(node_type=OperatorKind.SOMETIME, args=tuple([TRUE()]))
     
 
-def parse_pddl3(domain_path, problem_path):
+def parse_pddl3(domain_path, problem_path, lifted = True):
     reader = PDDLReader()
     parser_extensions = ParserExtension()
     reader._trajectory_constraints["at-end"] = parser_extensions.parse_atend
@@ -61,14 +61,21 @@ def parse_pddl3(domain_path, problem_path):
     reader._trajectory_constraints["always-within"] = parser_extensions.parse_alwayswithin
     problem = reader.parse_problem(domain_path, problem_path)
     quantitative_constrants = parser_extensions.constraints
-    return PDDL3Problem(problem, quantitative_constrants)
+    assert lifted == True
+    if lifted:
+        return PDDL3LiftedProblem(problem, quantitative_constrants)
+    else:
+        return PDDL3Problem(problem, quantitative_constrants)
 
 
-def build_constraint_list(quantifier_remover: QuantifiersRemover, problem: Problem) -> List[FNode]:
+def build_constraint_list(quantifier_remover: QuantifiersRemover, problem: Problem, lifted = False) -> List[FNode]:
         constraints = problem.trajectory_constraints
         C_temp = (And(constraints)).simplify()
         C_list = C_temp.args if C_temp.is_and() else [C_temp]
-        C_to_return = (And(_remove_quantifier(quantifier_remover, C_list, problem))).simplify()
+        if lifted:
+            C_to_return = (And(C_list)).simplify()
+        else:
+            raise Exception("Error in Lifted Compilation!")
         constraints_list =  list(C_to_return.args) if C_to_return.is_and() else [C_to_return]
 
         if len(constraints_list) == 1 and (constraints_list[0] == True or constraints_list[0] == TRUE()):
@@ -102,6 +109,45 @@ def _remove_quantifier(quantifier_remover: QuantifiersRemover, C: list, problem:
                 quantifier_remover.remove_quantifiers(c, problem)
             )
         return new_C
+
+
+class PDDL3LiftedProblem(AbstractProblem):
+
+    """
+    The Unified Planning framework supports some PDDL3 constraints.
+    This class extends the support to include quantitative constraints and at-end constraints.
+    """
+
+    def __init__(self, problem: Problem, time_constraints: List[FNode]) -> None:
+        self.time_constraints = time_constraints
+        # Preprocess Other Constraints
+        self.problem = problem.clone()
+        self.env = problem.environment
+        quantifier_remover = QuantifiersRemover(self.env)
+        qualitative_constraints = build_constraint_list(quantifier_remover, self.problem, lifted=True)
+        # create a list that contains trajectory_constraints
+        # trajectory_constraints can contain quantifiers that need to be removed
+
+        if len(qualitative_constraints) == 0 and len(time_constraints) == 0:
+            raise Exception("No trajectory constraints to remove")
+        
+        self.qualitative_constraints = qualitative_constraints
+
+    def kind(self) -> "up.model.problem_kind.ProblemKind":
+        return super().kind()
+
+    def has_name(self, name: str) -> bool:
+        return super().has_name(name)
+    
+    def clone(self):
+        return super().clone()
+    
+    def normalize_plan(self, plan: "up.plans.Plan") -> "up.plans.Plan":
+        return super().normalize_plan(plan)
+
+
+    def get_env(self):
+        return self.env
 
 
 class PDDL3Problem(AbstractProblem):
