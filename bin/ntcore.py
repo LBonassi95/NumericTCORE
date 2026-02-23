@@ -18,7 +18,7 @@ from numeric_tcore.parsing_extensions import *
 @click.option('--naive_mode', 'achiever_strategy', flag_value=NAIVE)
 @click.option('--verbose', is_flag=True, default=False)
 def main(domain, problem, output, achiever_strategy, verbose):
-    problem = parse_pddl3(domain, problem)
+    problem = parse_pddl3(domain, problem, lifted=False)
 
     compiler = NumericCompiler(achiever_strategy=achiever_strategy) 
     #tmp = CompilationKind.TRAJECTORY_CONSTRAINTS_REMOVING

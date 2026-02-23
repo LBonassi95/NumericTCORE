@@ -103,8 +103,8 @@ class NumericCompiler:
         actions_prime: List["up.model.effect.Effect"] = list()
 
         ############# ADDITIONAL VARIABLES CREATION #############
-        initial_state_prime, f_prime = self._get_monitoring_atoms(state_evaluator, qualitative_constraints, UPState(initial_state))
-        initial_mark_values, f_prime_always_within = self._get_monitoring_atoms_always_within(state_evaluator, always_within, UPState(initial_state))
+        initial_state_prime, f_prime = self._get_monitoring_atoms(state_evaluator, qualitative_constraints, UPState(initial_state, self.ground_problem))
+        initial_mark_values, f_prime_always_within = self._get_monitoring_atoms_always_within(state_evaluator, always_within, UPState(initial_state, self.ground_problem))
         #########################################################
 
         ############# NEW GOAL CREATION #############
